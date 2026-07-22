@@ -489,10 +489,16 @@
   <div class="box">
     <button class="icon-btn close" onclick="closeSettings()">✕</button>
     <h2>설정</h2>
-    <p class="hint">기본값은 규칙 기반 엔진으로 <b>키 없이도 완전히 작동</b>합니다. 진짜 AI 반박·코칭을 원하면 <b>Gemini</b> 키를 연결하세요. (키는 이 브라우저에만 저장됩니다.)</p>
+    <p class="hint">기본값은 규칙 기반 엔진으로 <b>키 없이도 완전히 작동</b>합니다. 진짜 AI 반박·코칭은 아래 <b>백엔드 프록시(권장)</b> 또는 브라우저 직접 호출로 켤 수 있습니다.</p>
     <div class="field">
-      <label>Gemini API Key <span style="text-transform:none;color:var(--muted2)">(선택 · <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--acc2)">발급</a>)</span></label>
+      <label>백엔드 프록시 URL <span style="text-transform:none;color:var(--muted2)">(권장 · 키가 서버에 숨겨짐)</span></label>
+      <input id="backendUrl" type="url" placeholder="http://localhost:8000" autocomplete="off" />
+      <p class="hint" style="margin-top:6px">FastAPI 백엔드를 띄우고 <code>GEMINI_API_KEY</code>를 서버에 두면, 브라우저에 키가 노출되지 않습니다.</p>
+    </div>
+    <div class="field">
+      <label>Gemini API Key <span style="text-transform:none;color:var(--muted2)">(직접 호출 · <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--acc2)">발급</a>)</span></label>
       <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off" />
+      <p class="hint" style="margin-top:6px">프록시 없이 쓸 때만. 브라우저에서 직접 호출하므로 <b>개인 실험용</b>입니다.</p>
     </div>
     <div class="field">
       <label>모델</label>
@@ -500,7 +506,6 @@
     </div>
     <div class="field">
       <button class="btn wide" onclick="saveSettings()">저장</button>
-      <p class="hint">브라우저에서 직접 호출하므로 개인 실험용으로만 사용하세요. 실서비스는 백엔드 프록시가 필요합니다.</p>
     </div>
     <div class="field">
       <label>내 사고 데이터 <span style="text-transform:none;color:var(--muted2)">(백업 · 파일럿 제출)</span></label>
@@ -657,7 +662,7 @@ const DEFAULT = {
   actions:[],           // 실행 약속 → 결과 → 교훈 (피드백 루프)
   seq:0,
   onboarded:false,      // 첫 실행 안내 여부
-  settings:{provider:'gemini', keys:{gemini:''}, models:{gemini:'gemini-2.5-flash'}}
+  settings:{provider:'gemini', keys:{gemini:''}, models:{gemini:'gemini-2.5-flash'}, backendUrl:''}
 };
 let S = load();
 function load(){
@@ -1063,11 +1068,21 @@ function debateQuestions(claim){
 function curProvider(){return 'gemini'}
 function curKey(){return (S.settings.keys||{}).gemini||''}
 function curModel(){return (S.settings.models||{}).gemini||PROVIDERS.gemini.models[0]}
-function providerName(){return 'Gemini'}
-const hasAI=()=>!!curKey().trim();
+function curBackend(){return ((S.settings.backendUrl||'').trim().replace(/\/+$/,''))}
+function providerName(){return curBackend()?'Gemini · 프록시':'Gemini'}
+const hasAI=()=>!!(curBackend()||curKey().trim());
 
 async function askAI(system,user,opts){
-  const key=curKey(),model=curModel(),mt=(opts&&opts.max_tokens)||800;
+  const mt=(opts&&opts.max_tokens)||800, back=curBackend();
+  // 백엔드 프록시 우선 — 키가 서버에 있어 브라우저에 노출되지 않는다
+  if(back){
+    const res=await fetch(back+'/ai/complete',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({system,user,max_tokens:mt})});
+    if(!res.ok)throw new Error('Backend '+res.status);
+    const j=await res.json();return (j.text||'').trim();
+  }
+  // 직접 Gemini 호출 (개인 실험용 — 키가 브라우저에 노출됨)
+  const key=curKey(),model=curModel();
   const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,{
     method:'POST',headers:{'content-type':'application/json'},
     body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:mt,temperature:0.7}})
@@ -1503,10 +1518,14 @@ function fillModelOptions(){
   const sel=document.getElementById('model');const chosen=(S.settings.models||{}).gemini;
   sel.innerHTML=PROVIDERS.gemini.models.map((m,i)=>`<option value="${m}"${m===chosen?' selected':''}>${m}${i===0?' (추천)':''}</option>`).join('');
 }
-document.getElementById('settingsBtn').onclick=()=>{document.getElementById('apiKey').value=curKey();fillModelOptions();M.classList.add('open')};
+document.getElementById('settingsBtn').onclick=()=>{
+  document.getElementById('backendUrl').value=S.settings.backendUrl||'';
+  document.getElementById('apiKey').value=curKey();fillModelOptions();M.classList.add('open');
+};
 function closeSettings(){M.classList.remove('open')}
 function saveSettings(){
   S.settings.provider='gemini';
+  S.settings.backendUrl=document.getElementById('backendUrl').value.trim();
   S.settings.keys=S.settings.keys||{};S.settings.keys.gemini=document.getElementById('apiKey').value.trim();
   S.settings.models=S.settings.models||{};S.settings.models.gemini=document.getElementById('model').value;
   save();closeSettings();renderCoach();renderHome();

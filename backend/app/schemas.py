@@ -29,6 +29,13 @@ class CoachIn(BaseModel):
     mode: str = "socratic"   # "socratic" | "debate" | "orchestrate"
 
 
+class AiIn(BaseModel):
+    """범용 프록시 — 프론트가 키 없이 서버를 거쳐 LLM을 호출한다."""
+    system: str = ""
+    user: str
+    max_tokens: int = 800
+
+
 class GrowthOut(BaseModel):
     sessions: int
     latest_scores: dict

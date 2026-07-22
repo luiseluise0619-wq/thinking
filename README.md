@@ -46,7 +46,10 @@ python3 -m http.server 8080   # → http://localhost:8080
 ```
 - 오늘의 훈련 · 사고 프레임(10) · 멘탈 모델 라이브러리 · AI 코치(소크라테스/논쟁) · 성장 대시보드
 - 진행 상황은 브라우저 `localStorage`에 저장된다.
-- 설정(⚙️)에서 **Gemini API 키**를 넣으면 진짜 AI 반박/코칭이 켜진다(개인 실험용).
+- 설정(⚙️)에서 AI를 켜는 두 가지 방법:
+  - **백엔드 프록시(권장)** — 아래 FastAPI를 띄우고 설정에 그 URL을 넣으면, 키가 **서버에만** 있고 브라우저에 노출되지 않는다. CORS·키 노출을 동시에 해결.
+  - **직접 Gemini 키** — 프록시 없이 브라우저에서 직접 호출(개인 실험용, 키가 브라우저에 노출).
+- 어느 쪽이든 실패하면 규칙 기반 엔진으로 자동 폴백한다.
 
 ## ② 백엔드 MVP 실행
 
@@ -64,6 +67,7 @@ export GEMINI_API_KEY=AIza...           # Gemini
 | Method | Path | 설명 |
 |---|---|---|
 | `GET` | `/` | 서비스 상태 · AI 모드 · 에이전트 목록 |
+| `POST` | `/ai/complete` | **프론트 프록시** — {system,user} → {text}. 키를 서버에 숨긴다 |
 | `POST` | `/thinking/analyze` | 문제+답변 → Critic 질문 + 8축 점수 + 세션 기록 |
 | `POST` | `/coach` | `socratic` / `debate` / `orchestrate`(멀티 에이전트) |
 | `GET` | `/growth/{user_id}` | 능력치 추세(첫→최근 %) + 축적된 원칙 |

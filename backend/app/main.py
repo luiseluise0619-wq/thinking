@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import agents, db, llm, scoring
-from .schemas import AnalyzeIn, AnalyzeOut, CoachIn, GrowthOut
+from .schemas import AnalyzeIn, AnalyzeOut, AiIn, CoachIn, GrowthOut
 
 app = FastAPI(title="THINK OS API", version="0.1.0",
               description="사고 성장 운영체제 — Agent Orchestrator + 성장 데이터 플랫폼")
@@ -95,6 +95,20 @@ async def resolve_action(action_id: int, status: str, result: str = ""):
     if lesson:
         db.add_principle(row["user_id"], lesson, "🔁 " + (row.get("problem") or ""))
     return {"action": row, "lesson": lesson, "source": ref["source"]}
+
+
+# --- 범용 LLM 프록시: 프론트가 키 없이 서버를 거쳐 호출 (키 노출·CORS 해결) ---
+@app.post("/ai/complete")
+async def ai_complete(body: AiIn):
+    if not llm.has_key():
+        raise HTTPException(503, "no_provider")  # 프론트는 규칙 기반으로 폴백
+    if not body.user.strip():
+        raise HTTPException(400, "user is empty")
+    try:
+        text = await llm.complete(body.system, body.user, max_tokens=body.max_tokens)
+    except Exception:
+        raise HTTPException(502, "llm_error")
+    return {"text": text, "provider": llm.provider()}
 
 
 # --- 2. AI 코치: 소크라테스 / 논쟁 / 멀티에이전트 오케스트레이션 ---
