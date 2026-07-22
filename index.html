@@ -175,6 +175,34 @@
   .wis{background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:10px;padding:13px 15px}
   .wis .p{font-weight:700;font-size:14.5px}
   .wis .src{color:var(--muted2);font-size:12px;margin-top:4px}
+  .wis-hist{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted);display:grid;gap:3px}
+  .wis-hist s{color:var(--muted2)}
+  .wis-act{margin-top:10px;display:flex;gap:8px}
+  .wis-act button{background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--muted);transition:.15s}
+  .wis-act button:hover{color:var(--txt);border-color:var(--acc)}
+  /* Genome */
+  .genome-traits{display:grid;gap:10px}
+  .gt{display:flex;align-items:center;gap:12px;font-size:14px}
+  .gt .gn{width:104px;flex:none;font-weight:700}
+  .gt .stars{letter-spacing:2px;font-size:15px}
+  .gt .stars .on{color:var(--gold)}.gt .stars .off{color:var(--line2)}
+  .gt .gr{margin-left:auto;color:var(--muted2);font-size:12px;font-variant-numeric:tabular-nums}
+  .genome-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  @media(max-width:640px){.genome-2{grid-template-columns:1fr}}
+  .gbox{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .gbox .lb{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .prog{display:flex;align-items:baseline;gap:10px;margin-top:8px;font-weight:800}
+  .prog .a{color:var(--muted2);font-size:18px}.prog .b{color:var(--acc2);font-size:26px}.prog .ar{color:var(--muted2)}
+  .dstyle{display:flex;height:12px;border-radius:99px;overflow:hidden;margin-top:10px;background:var(--panel2)}
+  .dstyle .an{background:linear-gradient(90deg,var(--acc),#6a5bff)}.dstyle .it{background:linear-gradient(90deg,var(--acc2),#00b3a0)}
+  .dstyle-lbl{display:flex;justify-content:space-between;font-size:12px;margin-top:7px;font-weight:700}
+  .metrics6{display:grid;gap:11px}
+  .m6{display:flex;align-items:center;gap:12px;font-size:13.5px}
+  .m6 .mn{width:120px;flex:none;font-weight:700}
+  .m6 .mb{flex:1;height:9px;border-radius:99px;background:var(--panel2);overflow:hidden}
+  .m6 .mb>i{display:block;height:100%;border-radius:99px}
+  .m6 .mv{width:96px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+  .m6 .den{color:var(--muted2);font-weight:600;font-size:11px}
   .empty{color:var(--muted2);font-size:13.5px;text-align:center;padding:24px}
 
   .loop{display:flex;flex-wrap:wrap;align-items:center;gap:8px;justify-content:center;margin-top:6px}
@@ -276,7 +304,7 @@
     <button data-tab="frameworks">🧩 사고 프레임</button>
     <button data-tab="models">📚 멘탈 모델</button>
     <button data-tab="coach">🎯 AI 코치</button>
-    <button data-tab="dna">🧬 Thinking DNA</button>
+    <button data-tab="dna">🧬 Genome</button>
     <button data-tab="growth">📈 성장</button>
   </nav>
 
@@ -542,10 +570,15 @@ const DEFAULT = {
 let S = load();
 function load(){
   try{const r=JSON.parse(localStorage.getItem('thinkos2'));
-    return r?{...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},
-      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[]}:structuredClone(DEFAULT)}
-  catch(e){return structuredClone(DEFAULT)}
+    if(!r)return structuredClone(DEFAULT);
+    const s={...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},
+      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[]};
+    // 구버전 원칙({p,src,day})을 진화형 모델로 정규화
+    s.wisdom=s.wisdom.map(w=>w.text!==undefined?w:{id:(w.id||++s.seq),text:w.p||w.text||'',src:w.src||'',day:w.day||'',cases:w.cases||[],revisions:w.revisions||[]});
+    return s;
+  }catch(e){return structuredClone(DEFAULT)}
 }
+function pushWisdom(text,src){S.seq=(S.seq||0)+1;S.wisdom.unshift({id:S.seq,text,src,day:todayStr(),cases:[],revisions:[]});}
 function save(){localStorage.setItem('thinkos2',JSON.stringify(S))}
 function todayStr(){return new Date().toISOString().slice(0,10)}
 function dailyProblem(){const d=new Date();const seed=d.getFullYear()*1000+Math.floor((d-new Date(d.getFullYear(),0,0))/86400000);return PROBLEMS[seed%PROBLEMS.length]}
@@ -641,11 +674,14 @@ document.getElementById('feedbackModal').addEventListener('click',e=>{if(e.targe
 
 // Reflection Agent (규칙 기반 + 선택 AI)
 function reflectRule(status,result){
+  const r=result.trim();
   if(status==='done')
-    return result.trim()
-      ? `직접 확인해보니 얻은 것: 추측보다 실험이 빠르다 — "${result.trim().slice(0,40)}"에서 배운 것을 원칙으로.`
-      : `실행이 통찰을 만든다. 다음엔 결과를 더 구체적으로 기록하자.`;
-  return `실행을 막은 진짜 이유를 보라 — 계획이 너무 컸거나 우선순위가 낮았다. 더 작게 쪼개라.`;
+    return r
+      ? `예상과 결과의 <b>차이</b>가 곧 배움이다: "${r.slice(0,50)}" — 여기서 다음에도 쓸 규칙 한 줄로.`
+      : `실행은 했지만 무엇을 확인했는지 기록하지 않으면 지혜가 되지 않는다. 결과를 한 문장으로 남겨라.`;
+  return r
+    ? `실행을 막은 진짜 병목: "${r.slice(0,40)}". 그 병목을 없애는 <b>더 작은 다음 행동</b>은?`
+    : `못 한 데는 이유가 있다 — 계획이 컸거나 우선순위가 낮았다. 하루 안에 끝낼 크기로 쪼개라.`;
 }
 async function suggestReflection(){
   const box=document.getElementById('fbSuggest');
@@ -676,7 +712,7 @@ function saveFeedback(){
   // 실행 회고 → 능력치 되먹임
   if(FB.status==='done'){S.stats.exec+=4;S.stats.meta+=2;S.stats.learning+=1;}
   else{S.stats.meta+=2;}
-  if(a.lesson)S.wisdom.unshift({p:a.lesson,src:'🔁 '+a.problem,day:todayStr()});
+  if(a.lesson)pushWisdom(a.lesson,'🔁 '+a.problem);
   save();closeFeedback();renderHome();
   if(document.getElementById('view-dna').classList.contains('active'))renderDNA();
 }
@@ -709,18 +745,102 @@ function renderModels(){
    RULE-BASED ENGINES (work with no API key)
 ============================================================ */
 const SURFACE=['많아서','때문에','좋아서','싫어서','그냥','원해서','비싸서','싸서','필요해서','유행','트렌드','돈','편해서'];
-function isSurface(t){const s=t.trim();if(s.length<8)return true;return SURFACE.some(w=>s.includes(w))&&s.length<40}
+// 사고 신호 감지 — 지표와 질문 선택의 공통 기반
+const CUE={
+  because:/(왜냐|때문|근거|이유는|따라서|그래서|즉|by extension)/,
+  causal:/(근본|본질|구조|뿌리|메커니즘|인센티브|원인|동인|드라이버|작동 원리)/,
+  counter:/(반례|예외|반증|그러나|하지만|반대로|틀릴|아닐 수도|한계|다만|단,|반면)/,
+  evidence:/(데이터|통계|연구|사례|수치|%|퍼센트|실제로|관찰|실험)/,
+  hedge:/(아마|같다|듯|추측|느낌|그냥|막연)/,
+};
+function analyzeText(t){
+  t=(t||'').trim();
+  const words=t.split(/\s+/).filter(Boolean).length;
+  return {t,words,
+    because:CUE.because.test(t), causal:CUE.causal.test(t), counter:CUE.counter.test(t),
+    evidence:CUE.evidence.test(t), hedge:CUE.hedge.test(t),
+    surface:(SURFACE.some(w=>t.includes(w))&&t.length<40)||words<4};
+}
+function isSurface(t){return analyzeText(t).surface}
 
+// 반증 우선 · 약점 타겟팅 소크라테스 엔진
+// (같은 답변이라도 "왜 그렇게 생각해?"가 아니라 "틀렸다면 어떤 증거가 필요할까?"를 던진다)
 function challenge(answer, problem){
-  const a=answer.trim();const surface=isSurface(a);
-  const kw=(a.replace(/[.,!?]/g,'').split(/\s+/).filter(w=>w.length>1)[0])||'그 주장';
-  const qs=[];
-  qs.push(`"${kw}"라고 했는데 — 그 <b>근거</b>는? 데이터인가, 느낌인가?`);
-  qs.push(surface?`그건 원인이 아니라 <b>결과·현상</b>일 수 있다. 그 아래의 진짜 원인은?`
-                 :`이 설명에 깔린 <b>숨은 가정</b>은 무엇인가? 그게 깨지면?`);
-  qs.push(`"${(problem||'').replace(/왜 |\?/g,'')||'이 현상'}"의 <b>본질적 가치·동기</b>는?`);
-  qs.push(`이 설명으로 설명 안 되는 <b>반례</b>를 하나 떠올려보라.`);
-  return {surface,qs:qs.slice(0,3)};
+  const a=analyzeText(answer);
+  const topic=(problem||'').replace(/왜 |\?/g,'').trim()||'이 현상';
+  const kw=(a.t.replace(/[.,!?"']/g,'').split(/\s+/).filter(w=>w.length>1)[0])||'그 주장';
+  const bank=[];
+  // 1) 반증 조건 — 항상 첫 질문, 가장 날카롭다
+  bank.push(`그 생각이 <b>틀렸다면</b> 어떤 증거를 보게 될까? 그 증거를 지금 확인할 방법은?`);
+  // 2) 감지된 약점을 겨냥
+  if(!a.because||a.hedge) bank.push(`"${kw}"는 <b>근거</b>인가 <b>느낌</b>인가? 이 주장을 지탱하는 사실 하나를 대라.`);
+  if(a.surface) bank.push(`그건 <b>결과·현상</b>이지 원인이 아닐 수 있다. "왜?"를 두 층 더 내려가면 무엇이 나오나?`);
+  else bank.push(`이 설명이 성립하려면 <b>무엇이 참이어야</b> 하나? 그 숨은 가정이 깨지면?`);
+  if(!a.counter) bank.push(`이 설명으로 <b>설명되지 않는 사례</b>를 하나 떠올려보라. 없다면, 왜 없다고 확신하나?`);
+  if(!a.causal) bank.push(`"${topic}"의 <b>근본 동인</b>은? 통념을 걷어내고 더 못 쪼갤 때까지 내려가면?`);
+  bank.push(`그게 사실이라면 <b>그 다음엔</b> 무슨 일이 따라오나? (2차 결과로 검증)`);
+  const surface=a.surface||(!a.because&&!a.causal);
+  return {surface,qs:[bank[0],...bank.slice(1)].slice(0,3)};
+}
+
+/* --- 측정 기반 사고 지표 (Thinking DNA 신뢰성의 핵심) --- */
+function sessionMetrics(R){
+  const a=analyzeText(R.answer), f=analyzeText(R.final||'');
+  const framed=(R.frame||'').trim().length>5;
+  const lens=!!R.fwId;
+  const refined=f.words>a.words+2;                 // 최종 생각이 더 깊어졌는가
+  const counterFrame=R.fwId==='inv'||R.fwId==='bayes';
+  let depth=0;
+  depth+=framed?22:0; depth+=lens?16:0; depth+=refined?16:0;
+  depth+=(a.causal||f.causal)?22:0; depth+=Math.min(24,a.words+f.words);
+  depth=Math.max(0,Math.min(100,depth));
+  return {
+    depth,                                          // 질문의 깊이(0~100)
+    essence:(!a.surface)&&(a.causal||f.causal||framed),  // 본질 도달 여부
+    leap:!(a.because||f.because||a.evidence||f.evidence),// 논리적 비약(근거 전무)
+    counter:a.counter||f.counter||counterFrame,     // 반례 고려 여부
+  };
+}
+const depthToLv=d=>1+Math.min(4,Math.round(d/25));   // 0→Lv1 ... 100→Lv5
+
+function genome(){
+  const H=(S.history||[]).filter(h=>h.metrics);
+  const n=H.length;
+  const rate=f=>n?H.filter(f).length/n:null;
+  const win=Math.max(1,Math.floor(n/2));
+  const early=H.slice(0,win), recent=H.slice(-win);
+  const avg=(arr,f)=>arr.length?arr.reduce((s,h)=>s+f(h),0)/arr.length:0;
+  const rin=(arr,f)=>arr.length?arr.filter(f).length/arr.length:0;
+  const resolved=(S.actions||[]).filter(a=>a.status!=='pending');
+  const execRate=resolved.length?resolved.filter(a=>a.status==='done').length/resolved.length:null;
+  const W=S.wisdom||[];
+  const reused=W.filter(w=>(w.cases&&w.cases.length)||(w.revisions&&w.revisions.length)).length;
+  const reuseRate=W.length?reused/W.length:null;
+  const cnt=ids=>ids.reduce((s,id)=>s+(S.fwCounts?.[id]||0),0);
+  const at=cnt(['why5','sys','bayes','8020','model','first']);
+  const it=cnt(['inv','2nd','frame','action']);
+  const tot=at+it;
+  const m={
+    depth:n?Math.round(avg(H,h=>h.metrics.depth)):null,
+    essenceRate:rate(h=>h.metrics.essence),
+    counterRate:rate(h=>h.metrics.counter),
+    leapRate:rate(h=>h.metrics.leap),
+    execRate, reuseRate,
+  };
+  const st=r=>r==null?0:Math.max(1,Math.round(r*5));
+  const traits=[
+    {name:'본질 추구',rate:m.essenceRate,stars:st(m.essenceRate)},
+    {name:'논리 견고성',rate:m.leapRate==null?null:1-m.leapRate,stars:st(m.leapRate==null?null:1-m.leapRate)},
+    {name:'반례 고려',rate:m.counterRate,stars:st(m.counterRate)},
+    {name:'실행력',rate:m.execRate,stars:st(m.execRate)},
+    {name:'사고 깊이',rate:m.depth==null?null:m.depth/100,stars:st(m.depth==null?null:m.depth/100)},
+  ];
+  return {n,metrics:m,traits,
+    decision:tot?{analytic:Math.round(at/tot*100),intuitive:Math.round(it/tot*100)}:null,
+    progress:{
+      depthEarly:Math.round(avg(early,h=>h.metrics.depth)), depthRecent:Math.round(avg(recent,h=>h.metrics.depth)),
+      essenceEarly:rin(early,h=>h.metrics.essence), essenceRecent:rin(recent,h=>h.metrics.essence),
+    }};
 }
 
 function lensQuestion(fwId, problem){
@@ -760,22 +880,22 @@ function suggestModel(text){
 function coachQuestions(dilemma){
   const d=dilemma.trim().replace(/\?+$/,'');
   return [
-    {q:`"${d}" — 이 결정의 <b>진짜 목적</b>은? 표면 이유 말고.`,why:'① 문제 정의 · 본질'},
-    {q:`지금 불만은 <b>환경</b> 때문인가, <b>목표</b> 때문인가? 장소만 바꾸면 해결되나?`,why:'문제의 뿌리 진단'},
-    {q:`이 선택 말고 <b>다른 해결책 3가지</b>는? 극단적인 것도.`,why:'⑦ 역발상 · 선택지 확장'},
-    {q:`1년 뒤, <b>안 했을 때</b> 후회 확률 vs <b>했을 때</b> 후회 확률, 어느 쪽이 큰가?`,why:'⑧ 2차 · ⑨ 확률 사고'},
-    {q:`<b>최악의 시나리오</b>는? 그게 실제로 견딜 만한가?`,why:'다운사이드 점검'},
-    {q:`이걸 검증할 <b>7일 내 최소 행동</b>은 무엇인가?`,why:'⑩ 실행'},
+    {q:`"${d}"로 <b>진짜 얻으려는 것</b>은? "그걸 얻으면 뭐가 해결되지?"를 세 번 반복하면 무엇이 남나?`,why:'본질(1원칙) · 표면 목적 걷어내기'},
+    {q:`이 불편함이 <b>환경</b> 탓인지 <b>목표</b> 탓인지 어떻게 구분하나? 환경만 바꿨을 때도 남는 문제는?`,why:'문제 정의 · 오진 방지'},
+    {q:`6개월 뒤, 이 결정이 <b>틀렸다는 걸</b> 무엇을 보고 알게 될까?`,why:'반증 조건 · 확률 사고'},
+    {q:`이 선택 말고 <b>비대칭 베팅</b>(손실은 작고 잠재 이득은 큰)은 없나?`,why:'역발상 · 기대값'},
+    {q:`<b>안 했을 때</b>와 <b>했을 때</b>의 1년 뒤 후회 중 어느 쪽이 크고, 어느 쪽이 <b>되돌릴 수 있나</b>?`,why:'2차 사고 · 가역성'},
+    {q:`이번 주 안에 이걸 <b>가장 싸게 검증</b>할 행동 하나는?`,why:'실행 · 최소 실험'},
   ];
 }
 function debateQuestions(claim){
   const c=claim.trim().replace(/\.$/,'');
   return [
-    {stance:'반대 입장',color:'var(--warn)',q:`"${c}" — 정반대가 사실이라면? 그 근거를 만들어보라.`},
-    {stance:'전문가',color:'var(--acc2)',q:`이 분야 전문가가 지적할 <b>가장 뻔한 허점</b>은 무엇일까?`},
-    {stance:'현실 비판자',color:'var(--gold)',q:`"그게 실제로 맞다는 <b>증거</b>는? 누가 <b>돈을 낼까</b>? 해본 적 있나?"`},
-    {stance:'회의론자',color:'var(--pink)',q:`규제·인간의 저항·데이터 편향 때문에 <b>느려지거나 막힐</b> 가능성은?`},
-    {stance:'스틸맨',color:'var(--good)',q:`반대편의 <b>가장 강한 버전</b>을 만들어 반박해보라. 그래도 네 주장이 서는가?`},
+    {stance:'반대 입장',color:'var(--warn)',q:`"${c}" — <b>정반대가 참</b>이라고 가정하고 가장 강한 근거 3개를 만들어보라.`},
+    {stance:'전문가',color:'var(--acc2)',q:`이 분야를 10년 판 사람이 <b>즉시 반박</b>할 지점은? 당신이 모르는 변수는?`},
+    {stance:'현실 비판자',color:'var(--gold)',q:`실제로 맞다는 <b>증거</b>는? 누가 <b>돈·시간을 낼</b> 만큼 절실한가? 직접 해봤나?`},
+    {stance:'회의론자',color:'var(--pink)',q:`규제·인간의 관성·데이터 편향 중 이 주장을 <b>가장 먼저 무너뜨릴</b> 것은?`},
+    {stance:'스틸맨',color:'var(--good)',q:`반대편의 <b>가장 강한 버전</b>을 세운 뒤 반박하라. 그래도 결론이 서면, 그게 진짜 확신이다.`},
   ];
 }
 
@@ -859,7 +979,7 @@ function rSet(field,elId,next){R[field]=(document.getElementById(elId).value||''
 async function runAttack(){
   const box=document.getElementById('atkBox');let data;
   if(hasAI()){
-    try{const sys='너는 THINK OS의 날카로운 소크라테스식 사고 코치다. 사용자의 답을 절대 칭찬하지 말고, 표면적 답변·숨은 가정·논리 오류를 지적하며 본질로 파고드는 반박 질문 3개만 한국어로 제시하라. 각 질문은 한 줄, 번호 없이 줄바꿈 구분. 답을 대신 말하지 마라.';
+    try{const sys='너는 THINK OS의 날카로운 소크라테스식 사고 코치다. 규칙: (1) 절대 칭찬·요약·답을 하지 마라. (2) 첫 질문은 반드시 반증 조건을 물어라 — "이 생각이 틀렸다면 어떤 증거를 보게 될까?" 형태. (3) 나머지 두 질문은 사용자 답변에서 감지한 가장 약한 고리(근거 부족/숨은 가정/반례 미고려/표면 머무름) 하나씩을 정확히 겨냥하라. (4) 사용자의 실제 표현을 인용해 구체적으로. 한국어 질문 3개만, 각 한 줄, 번호 없이 줄바꿈 구분.';
       const txt=await askClaude(sys,`문제: ${R.problem}\n문제 재정의: ${R.frame}\n내 답: ${R.answer}`);
       data={surface:false,qs:splitLines(txt,3),ai:true};
     }catch(e){data={...challenge(R.answer,R.problem),err:true}}
@@ -884,7 +1004,7 @@ function rComplete(){
   const day=todayStr();
   if(S.lastDay!==day){const y=new Date(Date.now()-864e5).toISOString().slice(0,10);S.streak=(S.lastDay===y)?S.streak+1:1;S.lastDay=day;}
   S.sessions++;
-  if(R.principle)S.wisdom.unshift({p:R.principle,src:R.problem,day});
+  if(R.principle)pushWisdom(R.principle,R.problem);
   // --- Thinking DNA: 사고 데이터 축적 ---
   if(R.fwId)S.fwCounts[R.fwId]=(S.fwCounts[R.fwId]||0)+1;
   if((R.frame||'').trim().length>5)S.framedSessions=(S.framedSessions||0)+1;
@@ -895,7 +1015,7 @@ function rComplete(){
   }
   const gains=grantGains();S.xp+=gains.xp;
   S.history=S.history||[];
-  S.history.push({day,n:S.sessions,stats:{...S.stats}});
+  S.history.push({day,n:S.sessions,stats:{...S.stats},metrics:sessionMetrics(R)});
   if(S.history.length>120)S.history=S.history.slice(-120);
   save();renderHome();
   const c=currentLevel();
@@ -948,8 +1068,8 @@ async function doCoach(){
   if(hasAI()){
     try{
       const sys=debate
-        ?'너는 THINK OS의 논쟁 파트너다. 사용자의 주장에 대해 [반대 입장], [전문가], [현실 비판자], [회의론자], [스틸맨] 다섯 입장에서 각각 날카로운 반박 질문을 한 줄씩 한국어로 제시하라. 각 줄은 "입장: 질문" 형식. 답을 대신 말하지 마라.'
-        :'너는 THINK OS의 소크라테스식 사고 코치다. 사용자의 고민에 절대 답을 주지 말고, 스스로 답에 도달하게 만드는 예리한 질문 6개만 한국어로 제시하라. 진짜 목적/환경vs목표/대안/후회/최악/최소행동 관점 활용. 각 질문 한 줄, 번호 없이 줄바꿈 구분.';
+        ?'너는 THINK OS의 논쟁 파트너다. 사용자의 주장을 [반대 입장(정반대가 참이라면)], [전문가(모르는 변수)], [현실 비판자(증거·수요·실행 경험)], [회의론자(가장 먼저 무너질 지점)], [스틸맨(상대의 최강 버전 후 반박)] 다섯 입장에서 각각 한 줄 반박 질문으로 공격하라. 추상적 표현 금지, 이 주장에만 해당하는 구체적 허점을 찔러라. 각 줄 "입장: 질문" 형식, 한국어. 답을 대신 말하지 마라.'
+        :'너는 THINK OS의 소크라테스식 사고 코치다. 절대 답을 주지 말고 스스로 답에 도달하게 하는 한국어 질문 6개만. 반드시 포함: 진짜 목적(세 번 캐묻기)·환경vs목표 구분·6개월 뒤 반증 조건·비대칭 베팅 대안·후회의 가역성·이번 주 최소 검증 행동. 각 질문 한 줄, 번호 없이 줄바꿈 구분.';
       const txt=await askClaude(sys,`${debate?'내 주장':'내 고민'}: ${v}`);
       const lines=splitLines(txt,6);
       items=debate?lines.map(l=>{const i=l.indexOf(':');return i>0?{stance:l.slice(0,i).trim(),q:l.slice(i+1).trim(),color:'var(--acc2)'}:{q:l,color:'var(--acc2)'}})
@@ -982,103 +1102,123 @@ function renderDNA(){
     return;
   }
   const fwMeta=Object.fromEntries(FRAMEWORKS.map(f=>[f.id,f]));
-  const sorted=[...ABILITIES].sort((a,b)=>S.stats[b.key]-S.stats[a.key]);
-  const strengths=sorted.slice(0,3);
-
-  // 약점 신호 (측정 가능한 것만 정직하게)
-  const weak=[];
-  const bottom=sorted[sorted.length-1];
-  weak.push({m:bottom.icon,t:`<b>${bottom.name}</b>이(가) 가장 낮은 축 — 여기에 훈련을 집중하면 성장 폭이 크다`});
-  const thinkAxes=['essence','logic','analysis','creative','judge','meta'];
-  const thinkAvg=thinkAxes.reduce((s,k)=>s+S.stats[k],0)/thinkAxes.length;
-  // 실행 완료율 — 피드백 루프에서 나온 실측 데이터 우선
+  const G=genome(), m=G.metrics;
+  const pct=r=>r==null?'—':Math.round(r*100)+'%';
+  const stars=n=>Array.from({length:5},(_,i)=>`<span class="${i<n?'on':'off'}">★</span>`).join('');
   const resolved=(S.actions||[]).filter(a=>a.status!=='pending');
-  const doneN=resolved.filter(a=>a.status==='done').length;
-  const compRate=resolved.length?doneN/resolved.length:null;
   const pendN=(S.actions||[]).filter(a=>a.status==='pending').length;
-  if(compRate!==null){
-    if(compRate<0.5)weak.push({m:'🔁',t:`<b>실행 완료율 ${Math.round(compRate*100)}%</b> — 사고는 하지만 계획에서 멈추는 경향. 더 작게 쪼개라`});
-  }else if(S.stats.exec<thinkAvg-6){
-    weak.push({m:'🚀',t:'<b>실행력이 사고력보다 낮음</b> — 생각을 검증 행동으로 옮기는 습관이 부족'});
-  }
+  const W=S.wisdom||[];
+
+  // 강점 = 측정된 상위 성향
+  const tr=G.traits.filter(t=>t.rate!=null).sort((a,b)=>b.rate-a.rate);
+  const strengths=tr.slice(0,3);
+
+  // 약점 = 측정된 지표에서만 (분모 함께 노출)
+  const weak=[];
+  if(m.essenceRate!=null&&m.essenceRate<0.5)weak.push({m:'🧩',t:`<b>본질 도달률 ${pct(m.essenceRate)}</b> — 표면에 머무는 경우가 많다. "왜?"를 두 층 더 내려가라`});
+  if(m.leapRate!=null&&m.leapRate>0.4)weak.push({m:'⚡',t:`<b>논리적 비약 ${pct(m.leapRate)}</b> — 근거 없이 결론으로 점프. 주장마다 사실 하나를 붙여라`});
+  if(m.counterRate!=null&&m.counterRate<0.4)weak.push({m:'🔍',t:`<b>반례 고려율 ${pct(m.counterRate)}</b> — 반대 증거를 잘 찾지 않는다. 역발상·확률 사고를 써라`});
+  if(m.execRate!=null&&m.execRate<0.5)weak.push({m:'🔁',t:`<b>실행 완료율 ${pct(m.execRate)}</b> — 계획에서 멈추는 경향. 더 작게 쪼개라`});
   if(pendN>0)weak.push({m:'⏳',t:`<b>미확인 실행 약속 ${pendN}건</b> — 홈에서 결과를 기록해 루프를 닫아라`});
   const framedRate=(S.framedSessions||0)/N;
-  if(framedRate<0.5)weak.push({m:'🎯',t:`<b>문제 정의를 자주 건너뜀</b> (${Math.round(framedRate*100)}%만 재정의) — 진짜 문제부터 세워라`});
-  const total=Object.values(S.fwCounts||{}).reduce((a,b)=>a+b,0);
-  const rate=id=>(S.fwCounts?.[id]||0)/(total||1);
-  if(total>=3){
-    if(rate('inv')<0.05)weak.push({m:'🔄',t:'<b>역발상을 거의 쓰지 않음</b> — "어떻게 하면 망할까?"로 뒤집어 보라'});
-    if(rate('bayes')<0.05)weak.push({m:'🎲',t:'<b>반례·반증(확률 사고)을 거의 남기지 않음</b> — "내가 틀릴 확률은?"을 물어라'});
-  }
+  if(framedRate<0.5)weak.push({m:'🎯',t:`<b>문제 정의 생략 ${pct(1-framedRate)}</b> — 진짜 문제부터 세워라`});
+  if(!weak.length)weak.push({m:'✨',t:'뚜렷한 약점 신호가 없다. 난도를 높인 문제로 한계를 시험하라.'});
 
   // 자주 쓰는 사고방식
+  const total=Object.values(S.fwCounts||{}).reduce((a,b)=>a+b,0);
   const fwSorted=Object.entries(S.fwCounts||{}).sort((a,b)=>b[1]-a[1]);
-  const topFw=fwSorted[0]&&fwMeta[fwSorted[0][0]];
-  const freqHtml=total?fwSorted.map(([id,c])=>{const f=fwMeta[id];const pct=Math.round(c/total*100);
-      return `<div class="row"><span class="fn">${f.emoji} ${f.name}</span><span class="fb"><i style="width:${pct}%"></i></span><span class="fp">${pct}%</span></div>`}).join('')
+  const freqHtml=total?fwSorted.map(([id,c])=>{const f=fwMeta[id];const p=Math.round(c/total*100);
+      return `<div class="row"><span class="fn">${f.emoji} ${f.name}</span><span class="fb"><i style="width:${p}%"></i></span><span class="fp">${p}%</span></div>`}).join('')
     :`<p style="color:var(--muted2);font-size:13px">사고 프레임을 선택한 훈련이 아직 없습니다.</p>`;
 
-  // 최근 변화
-  const hist=S.history||[];let chgHtml,period='';
+  // 6대 신뢰 지표 (분모 노출 = 신뢰성)
+  const denS=`${G.n}회`, denE=`${resolved.length}건`, denW=`${W.length}개`;
+  const M6=[
+    {n:'🧩 본질 도달률',v:m.essenceRate,lbl:pct(m.essenceRate),den:denS,good:1},
+    {n:'🔍 반례 고려율',v:m.counterRate,lbl:pct(m.counterRate),den:denS,good:1},
+    {n:'⚡ 논리 견고성',v:m.leapRate==null?null:1-m.leapRate,lbl:m.leapRate==null?'—':pct(1-m.leapRate),den:denS,good:1},
+    {n:'🌀 사고 깊이',v:m.depth==null?null:m.depth/100,lbl:m.depth==null?'—':`Lv${depthToLv(m.depth)} (${m.depth})`,den:denS,good:1},
+    {n:'🔁 실행 완료율',v:m.execRate,lbl:m.execRate==null?'—':pct(m.execRate),den:denE,good:1},
+    {n:'💎 원칙 재사용률',v:m.reuseRate,lbl:m.reuseRate==null?'—':pct(m.reuseRate),den:denW,good:1},
+  ];
+  const m6Html=M6.map(x=>{const w=x.v==null?0:Math.round(x.v*100);
+    const col=x.v==null?'var(--line2)':x.v>=0.6?'var(--good)':x.v>=0.35?'var(--gold)':'var(--warn)';
+    return `<div class="m6"><span class="mn">${x.n}</span><span class="mb"><i style="width:${w}%;background:${col}"></i></span>
+      <span class="mv">${x.lbl} <span class="den">/ ${x.den}</span></span></div>`}).join('');
+
+  // 능력치 변화 (부가)
+  const hist=S.history||[];let chgHtml='',period='';
   if(hist.length>=2){
     const first=hist[0].stats,last=hist[hist.length-1].stats;
     period=`${hist[0].day} → ${hist[hist.length-1].day} · ${hist.length}회`;
     chgHtml=ABILITIES.map(a=>({a,f:first[a.key],t:last[a.key]})).filter(r=>r.f!=null&&r.t!=null)
       .map(r=>({...r,d:r.t-r.f})).sort((x,y)=>y.d-x.d)
       .map(r=>{const cls=r.d>0?'up':r.d<0?'dn':'flat';const sign=r.d>0?'+':'';
-        return `<div class="row"><span class="nm">${r.a.icon} ${r.a.name}</span>
-          <span class="fromto"><b>${r.f}</b> → <b>${r.t}</b></span>
-          <span class="delta ${cls}">${sign}${r.d}</span></div>`}).join('');
-  }else{
-    chgHtml=`<p style="color:var(--muted2);font-size:13px">변화 추세는 <b>2회 이상</b> 훈련하면 나타납니다. (현재 ${hist.length}회)</p>`;
-  }
+        return `<div class="row"><span class="nm">${r.a.icon} ${r.a.name}</span><span class="fromto"><b>${r.f}</b> → <b>${r.t}</b></span><span class="delta ${cls}">${sign}${r.d}</span></div>`}).join('');
+  }else chgHtml=`<p style="color:var(--muted2);font-size:13px">변화 추세는 <b>2회 이상</b> 훈련하면 나타납니다.</p>`;
 
-  const summary=`당신은 <b>${strengths.map(s=>s.name).join(' · ')}</b>에 강한 사고 유형입니다.`
-    +(topFw?` 가장 자주 꺼내는 렌즈는 <b>${topFw.emoji} ${topFw.name}</b>이고,`:'')
-    +` ${N}회의 훈련 데이터가 이렇게 말합니다 — 아래는 기록이 아니라 성장 리포트입니다.`;
+  const summary=`${N}회의 훈련이 만든 당신의 <b>사고 지문</b>입니다. 평균 사고 깊이 <b>Lv${depthToLv(m.depth||0)}</b>, 본질 도달률 <b>${pct(m.essenceRate)}</b> — 아래 지표는 답변 길이가 아니라 <b>실제 사고 행동</b>에서 측정됩니다.`;
 
   el.innerHTML=`
     <div class="card dna-hero">
-      <div class="lab">🧬 THINKING DNA</div>
-      <h2>${N}회 훈련으로 분석한 당신의 사고 지문</h2>
+      <div class="lab">🧬 THINKING GENOME</div>
+      <h2>${N}회 훈련으로 분석한 당신의 사고 유전자</h2>
       <p class="dna-sum">${summary}</p>
       ${hasAI()?`<div style="margin-top:14px"><button class="btn ghost sm" id="dnaAiBtn">🤖 AI 심층 총평 생성</button></div><div id="dnaAiOut"></div>`:''}
     </div>
+
+    <div class="card" style="margin-top:18px">
+      <p class="sec-title">🧬 사고 성향 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 측정된 5개 축</span></p>
+      <div class="genome-traits">${G.traits.map(t=>`
+        <div class="gt"><span class="gn">${t.name}</span><span class="stars">${stars(t.stars)}</span>
+          <span class="gr">${t.rate==null?'데이터 부족':pct(t.rate)}</span></div>`).join('')}</div>
+      <div class="genome-2">
+        <div class="gbox"><div class="lb">의사결정 스타일</div>
+          ${G.decision?`<div class="dstyle"><i class="an" style="width:${G.decision.analytic}%"></i><i class="it" style="width:${G.decision.intuitive}%"></i></div>
+            <div class="dstyle-lbl"><span style="color:var(--acc)">구조·데이터 ${G.decision.analytic}%</span><span style="color:var(--acc2)">발상·직관 ${G.decision.intuitive}%</span></div>`
+            :`<p style="color:var(--muted2);font-size:13px;margin:8px 0 0">프레임 사용 데이터가 쌓이면 나타납니다.</p>`}</div>
+        <div class="gbox"><div class="lb">평균 사고 깊이 · 본질 도달률 추이</div>
+          <div class="prog"><span class="a">Lv${depthToLv(G.progress.depthEarly)}</span><span class="ar">→</span><span class="b">Lv${depthToLv(G.progress.depthRecent)}</span></div>
+          <div class="prog" style="margin-top:6px"><span class="a">${Math.round(G.progress.essenceEarly*100)}%</span><span class="ar">→</span><span class="b" style="font-size:20px">${Math.round(G.progress.essenceRecent*100)}%</span> <span style="font-weight:600;color:var(--muted2);font-size:12px">본질 도달</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <p class="sec-title">📊 사고 신뢰 지표 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 답변 길이가 아닌 실제 사고에서 측정 (분모 표기)</span></p>
+      <div class="metrics6">${m6Html}</div>
+    </div>
+
     <div class="dna-cols">
       <div class="card"><p class="sec-title" style="color:var(--good)">✔ 강점</p>
-        <div class="sw">${strengths.map(s=>`<div class="it good"><span class="m">${s.icon}</span><span><b>${s.name}</b> · ${S.stats[s.key]}점</span></div>`).join('')}</div></div>
+        <div class="sw">${strengths.length?strengths.map(s=>`<div class="it good"><span class="m">★</span><span><b>${s.name}</b> · ${pct(s.rate)}</span></div>`).join(''):'<div class="empty" style="padding:12px">데이터를 더 모으면 강점이 드러납니다.</div>'}</div></div>
       <div class="card"><p class="sec-title" style="color:var(--warn)">⚠ 약점 & 사각지대</p>
         <div class="sw">${weak.map(w=>`<div class="it bad"><span class="m">${w.m}</span><span>${w.t}</span></div>`).join('')}</div></div>
     </div>
+
     <div class="card" style="margin-top:18px">
       <p class="sec-title">🧠 자주 사용하는 사고방식 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 사고의 편식을 드러낸다</span></p>
       <div class="freq">${freqHtml}</div>
     </div>
     <div class="card" style="margin-top:18px">
-      <p class="sec-title">🔁 실행 & 피드백 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 생각을 결과로 바꾸는 힘 (루프가 닫힌 횟수)</span></p>
-      <div class="freq">
-        <div class="row"><span class="fn">✅ 실행 완료율</span><span class="fb"><i style="width:${compRate!==null?Math.round(compRate*100):0}%"></i></span><span class="fp">${compRate!==null?Math.round(compRate*100)+'%':'—'}</span></div>
-      </div>
-      <p class="dna-note" style="margin-top:12px">실행 완료 <b>${doneN}</b> · 미확인 <b>${pendN}</b> · 회고에서 얻은 원칙 <b>${(S.wisdom||[]).filter(w=>String(w.src).startsWith('🔁')).length}</b></p>
-    </div>
-    <div class="card" style="margin-top:18px">
       <p class="sec-title">📈 능력치 변화 <span style="text-transform:none;font-weight:600;color:var(--muted2)">${period}</span></p>
       <div class="chg">${chgHtml}</div>
     </div>
-    <p class="dna-note">이 데이터는 이 브라우저에만 쌓입니다. 실제 서비스에선 개인 사고 프로필로 축적되어 코칭이 점점 정교해집니다 — 이것이 THINK OS의 해자입니다.</p>`;
+    <p class="dna-note">이 지표들은 이 브라우저에만 쌓입니다. 실제 서비스에선 개인 사고 프로필로 축적되어 코칭 정확도가 계속 올라갑니다 — 이것이 THINK OS의 해자입니다.</p>`;
 
   const aiBtn=document.getElementById('dnaAiBtn');
-  if(aiBtn)aiBtn.onclick=()=>dnaAiSummary(strengths,weak,fwSorted.map(([id,c])=>`${fwMeta[id].name} ${Math.round(c/total*100)}%`));
+  if(aiBtn)aiBtn.onclick=()=>dnaAiSummary(G);
 }
-async function dnaAiSummary(strengths,weak,freq){
+async function dnaAiSummary(G){
   const out=document.getElementById('dnaAiOut');
-  out.innerHTML=`<div class="thinking" style="margin-top:12px"><span class="d"></span> AI가 사고 프로필을 분석 중...</div>`;
+  out.innerHTML=`<div class="thinking" style="margin-top:12px"><span class="d"></span> AI가 사고 유전자를 분석 중...</div>`;
+  const m=G.metrics,p=r=>r==null?'데이터 부족':Math.round(r*100)+'%';
   try{
-    const sys='너는 THINK OS의 사고 분석가다. 사용자의 사고 데이터를 바탕으로, 격려가 아니라 날카롭고 구체적인 3~4문장 총평을 한국어로 써라. 강점을 어떻게 무기화하고 약점을 어떻게 보완할지 실전 조언을 담아라.';
-    const usr=`강점: ${strengths.map(s=>s.name).join(', ')}\n약점 신호: ${weak.map(w=>w.t.replace(/<[^>]+>/g,'')).join(' / ')}\n사고방식 빈도: ${freq.join(', ')}`;
+    const sys='너는 THINK OS의 사고 분석가다. 아래 측정 지표를 바탕으로 격려가 아니라 날카롭고 구체적인 3~4문장 총평을 한국어로 써라. 강점을 어떻게 무기화하고 약점을 어떻게 보완할지 실전 조언 위주로. 지표 수치를 근거로 인용하라.';
+    const usr=`총 ${G.n}회 훈련\n본질 도달률: ${p(m.essenceRate)}\n반례 고려율: ${p(m.counterRate)}\n논리적 비약: ${p(m.leapRate)}\n평균 사고 깊이: ${m.depth==null?'—':'Lv'+depthToLv(m.depth)}\n실행 완료율: ${p(m.execRate)}\n원칙 재사용률: ${p(m.reuseRate)}\n의사결정: 구조·데이터 ${G.decision?G.decision.analytic:'—'}% / 발상·직관 ${G.decision?G.decision.intuitive:'—'}%`;
     const txt=await askClaude(sys,usr,{max_tokens:400});
     out.innerHTML=`<div class="dna-sum" style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px">${txt.replace(/\n/g,'<br>')}</div>`;
-  }catch(e){out.innerHTML=`<p class="footnote">⚠️ AI 총평 생성 실패 — 위 규칙 기반 분석을 참고하세요.</p>`}
+  }catch(e){out.innerHTML=`<p class="footnote">⚠️ AI 총평 생성 실패 — 위 측정 지표를 참고하세요.</p>`}
 }
 
 /* ============================================================
@@ -1094,10 +1234,29 @@ function renderGrowth(){
       <div class="t"><b>Lv${l.n} ${l.name}</b><small>${l.desc}</small></div>
       <div class="st">${l.n<c.n?'✓ 달성':l.n===c.n?'현재':`${l.need} XP`}</div></div>`).join('');
   const w=document.getElementById('wisdomList');
-  w.innerHTML=S.wisdom.length?S.wisdom.map(x=>`<div class="wis"><div class="p">"${x.p}"</div><div class="src">← ${x.src}</div></div>`).join('')
-    :`<div class="empty">아직 축적된 원칙이 없습니다.<br>오늘의 훈련 마지막 단계에서 원칙을 남겨보세요.</div>`;
+  w.innerHTML=S.wisdom.length?S.wisdom.map(x=>{
+    const cases=x.cases||[],revs=x.revisions||[];
+    return `<div class="wis">
+      <div class="p">"${x.text}"</div>
+      <div class="src">← ${x.src||'훈련'} · ${x.day||''} ${cases.length?`· 적용 ${cases.length}`:''} ${revs.length?`· 수정 ${revs.length}`:''}</div>
+      ${revs.length?`<div class="wis-hist">${revs.map(r=>`<div>↳ <s>${r.from}</s></div>`).join('')}</div>`:''}
+      ${cases.length?`<div class="wis-hist">${cases.map(c=>`<div>· 적용: ${c.note} <span style="color:var(--muted2)">${c.day}</span></div>`).join('')}</div>`:''}
+      <div class="wis-act"><button onclick="wisdomCase(${x.id})">＋ 적용 사례</button><button onclick="wisdomRevise(${x.id})">✎ 재수정</button></div>
+    </div>`}).join('')
+    :`<div class="empty">아직 축적된 원칙이 없습니다.<br>훈련의 마지막 단계나 실행 회고에서 원칙을 남겨보세요.</div>`;
   const loop=['경험','문제 정의','사고','AI 검증','실행','결과','피드백','더 나은 사고'];
   document.getElementById('loopDiagram').innerHTML=loop.map((n,i)=>`<span class="n">${n}</span>${i<loop.length-1?'<span class="a">→</span>':'<span class="a">↺</span>'}`).join('');
+}
+// Wisdom Log 진화 — 원칙에 적용 사례를 쌓고, 검증되면 재수정한다 (원칙 재사용률의 근거)
+function wisdomCase(id){
+  const w=S.wisdom.find(x=>x.id===id);if(!w)return;
+  const note=prompt('이 원칙을 실제로 적용한 사례를 한 줄로:');
+  if(note&&note.trim()){(w.cases=w.cases||[]).push({note:note.trim(),day:todayStr()});save();renderGrowth();}
+}
+function wisdomRevise(id){
+  const w=S.wisdom.find(x=>x.id===id);if(!w)return;
+  const next=prompt('경험이 쌓여 원칙을 어떻게 다듬겠습니까? (새 버전)',w.text);
+  if(next&&next.trim()&&next.trim()!==w.text){(w.revisions=w.revisions||[]).push({from:w.text,day:todayStr()});w.text=next.trim();save();renderGrowth();}
 }
 
 /* ============================================================
