@@ -38,7 +38,7 @@ User System         Growth System           AI System
             Redis
       (캐시 · 세션 · Queue)
               |
-        AI Model Layer  —  Claude / Gemini (멀티 프로바이더, 런타임 선택)
+        AI Model Layer  —  Gemini (본 구현)
 ```
 
 이 레포는 위 구조의 **MVP 슬라이스**를 실제로 구현한다: `index.html`(Client) + `backend/`(FastAPI + Agent Orchestrator + Evaluation + SQLite).

@@ -17,7 +17,7 @@
 | **④ 북극성 비전** | [`HUMAN_OS.md`](HUMAN_OS.md) | HUMAN OS 성장 모델 · 7대 영역 매핑 · 검증 지표 (구현 vs 로드맵) |
 | **⑤ 검증 계획** | [`PILOT.md`](PILOT.md) · [`docs/pilot-invite.html`](docs/pilot-invite.html) | 30일 파일럿 — 가설·성공 지표·Go/Kill 게이트 + 참가자 모집 1페이지 |
 
-두 구현 모두 **Claude API 키가 없어도 규칙 기반 엔진으로 완전히 동작**한다.
+두 구현 모두 **Gemini API 키가 없어도 규칙 기반 엔진으로 완전히 동작**한다.
 키를 넣으면 진짜 추론으로 업그레이드된다.
 
 ---
@@ -46,7 +46,7 @@ python3 -m http.server 8080   # → http://localhost:8080
 ```
 - 오늘의 훈련 · 사고 프레임(10) · 멘탈 모델 라이브러리 · AI 코치(소크라테스/논쟁) · 성장 대시보드
 - 진행 상황은 브라우저 `localStorage`에 저장된다.
-- 설정(⚙️)에서 **프로바이더(Claude / Gemini)**를 고르고 API 키를 넣으면 진짜 AI 반박/코칭이 켜진다(개인 실험용).
+- 설정(⚙️)에서 **Gemini API 키**를 넣으면 진짜 AI 반박/코칭이 켜진다(개인 실험용).
 
 ## ② 백엔드 MVP 실행
 
@@ -54,10 +54,9 @@ python3 -m http.server 8080   # → http://localhost:8080
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-# (선택) 진짜 추론 — 둘 중 하나:
-export ANTHROPIC_API_KEY=sk-ant-...     # Claude
+# (선택) 진짜 추론:
 export GEMINI_API_KEY=AIza...           # Gemini
-# 둘 다 있으면 THINKOS_PROVIDER=claude|gemini 로 선택
+# (선택) 모델 지정: export THINKOS_GEMINI_MODEL=gemini-2.5-pro
 ```
 → `http://localhost:8000/docs` (Swagger)
 
