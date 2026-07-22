@@ -5,6 +5,7 @@ Vercel Serverless Function — 키를 숨기는 stateless Gemini 프록시.
 """
 import json
 import os
+import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler
 
@@ -29,11 +30,13 @@ class handler(BaseHTTPRequestHandler):
             return self._send(400, {"error": "user is empty"})
         model = os.environ.get("THINKOS_GEMINI_MODEL", "gemini-2.5-flash")
         payload = {
-            "systemInstruction": {"parts": [{"text": body.get("system", "")}]},
             "contents": [{"role": "user", "parts": [{"text": body.get("user", "")}]}],
             "generationConfig": {"maxOutputTokens": int(body.get("max_tokens", 800)),
                                  "temperature": 0.7},
         }
+        sys_prompt = (body.get("system") or "").strip()
+        if sys_prompt:  # 빈 systemInstruction은 Gemini가 거부할 수 있어 생략
+            payload["systemInstruction"] = {"parts": [{"text": sys_prompt}]}
         url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
                f"{model}:generateContent?key={key}")
         req = urllib.request.Request(url, data=json.dumps(payload).encode(),
@@ -43,6 +46,13 @@ class handler(BaseHTTPRequestHandler):
                 data = json.loads(r.read())
             parts = (data.get("candidates") or [{}])[0].get("content", {}).get("parts", [])
             text = "".join(p.get("text", "") for p in parts).strip()
-            return self._send(200, {"text": text, "provider": "gemini"})
-        except Exception:
-            return self._send(502, {"error": "llm_error"})
+            return self._send(200, {"text": text, "provider": "gemini", "model": model})
+        except urllib.error.HTTPError as e:
+            try:
+                detail = e.read().decode()[:500]
+            except Exception:
+                detail = ""
+            return self._send(502, {"error": "llm_error", "status": e.code,
+                                    "model": model, "detail": detail})
+        except Exception as e:
+            return self._send(502, {"error": "llm_error", "detail": str(e)[:300]})

@@ -14,16 +14,18 @@ export async function onRequestPost({ request, env }) {
 
   const model = env.THINKOS_GEMINI_MODEL || "gemini-2.5-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const payload = {
+    contents: [{ role: "user", parts: [{ text: body.user || "" }] }],
+    generationConfig: { maxOutputTokens: body.max_tokens || 800, temperature: 0.7 },
+  };
+  if ((body.system || "").trim()) payload.systemInstruction = { parts: [{ text: body.system }] };
   const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: body.system || "" }] },
-      contents: [{ role: "user", parts: [{ text: body.user || "" }] }],
-      generationConfig: { maxOutputTokens: body.max_tokens || 800, temperature: 0.7 },
-    }),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
   });
-  if (!res.ok) return json({ error: "llm_error" }, 502);
+  if (!res.ok) {
+    let detail = ""; try { detail = (await res.text()).slice(0, 500); } catch {}
+    return json({ error: "llm_error", status: res.status, model, detail }, 502);
+  }
   const data = await res.json();
   const text = ((data.candidates?.[0]?.content?.parts) || [])
     .map((p) => p.text || "").join("").trim();

@@ -253,8 +253,8 @@ async def ai_complete(body: AiIn, request: Request):
         raise HTTPException(400, "user is empty")
     try:
         text = await llm.complete(body.system, body.user, max_tokens=body.max_tokens)
-    except Exception:
-        raise HTTPException(502, "llm_error")
+    except Exception as e:
+        raise HTTPException(502, f"llm_error: {str(e)[:300]}")
     return {"text": text, "provider": llm.provider()}
 
 

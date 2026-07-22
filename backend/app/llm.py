@@ -30,14 +30,16 @@ async def complete(system: str, user: str, *, max_tokens: int = 900,
         raise RuntimeError("no_api_key")
     url = GEMINI_URL.format(model=model or DEFAULT_GEMINI)
     body = {
-        "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": user}]}],
         "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.7},
     }
+    if (system or "").strip():   # 빈 systemInstruction은 Gemini가 거부할 수 있어 생략
+        body["systemInstruction"] = {"parts": [{"text": system}]}
     async with httpx.AsyncClient(timeout=60) as client:
         r = await client.post(url, params={"key": key},
                               headers={"content-type": "application/json"}, json=body)
-        r.raise_for_status()
+        if r.status_code >= 400:  # 업스트림 오류를 그대로 드러냄
+            raise RuntimeError(f"gemini {r.status_code}: {r.text[:300]}")
         data = r.json()
     cands = data.get("candidates", [])
     parts = cands[0]["content"]["parts"] if cands else []

@@ -1609,12 +1609,27 @@ document.getElementById('accountBtn').onclick=openAuth;
 function closeAuth(){document.getElementById('authModal').classList.remove('open')}
 document.getElementById('authModal').addEventListener('click',e=>{if(e.target.id==='authModal')closeAuth()});
 
-function openAuth(){renderAuth(loggedIn()?'account':'login');document.getElementById('authModal').classList.add('open')}
+async function openAuth(){
+  document.getElementById('authModal').classList.add('open');
+  if(loggedIn()){renderAuth('account');return;}
+  if(!authBase()){renderAuth('nobackend');return;}
+  renderAuth('loading');
+  try{                                        // 이 백엔드가 계정을 지원하는지 탐지
+    const r=await fetch(authBase()+'/me');    // 계정 서버면 401, 없으면 404
+    renderAuth(r.status===404?'unsupported':'login');
+  }catch(e){renderAuth('login');}
+}
 function renderAuth(mode){
   const b=document.getElementById('authBody');
-  if(!authBase()&&mode!=='account'){
+  if(mode==='loading'){b.innerHTML=`<p class="page-kicker">계정</p><div class="thinking" style="margin-top:8px"><span class="d"></span> 확인 중...</div>`;return;}
+  if(mode==='nobackend'){
     b.innerHTML=`<p class="page-kicker">계정</p><h2 style="font-family:var(--serif);margin:0 0 8px">로그인은 서버에서</h2>
       <p class="hint">이 앱을 <b>배포된 서버</b>(같은 주소)에서 열면 계정으로 로그인해 여러 기기에서 데이터를 동기화할 수 있습니다. 지금은 이 브라우저에만 저장됩니다.</p>`;
+    return;
+  }
+  if(mode==='unsupported'){
+    b.innerHTML=`<p class="page-kicker">계정</p><h2 style="font-family:var(--serif);margin:0 0 8px">이 배포는 계정 미지원</h2>
+      <p class="hint">지금 배포(서버리스)에는 <b>AI 기능만</b> 있고 계정 서버가 없습니다. 데이터는 <b>이 브라우저</b>에 저장됩니다(설정에서 백업 가능).<br><br>여러 기기 동기화가 필요하면 <b>컨테이너 배포(Railway·Render·Fly)</b>로 올리세요 — 그러면 로그인이 켜집니다.</p>`;
     return;
   }
   if(mode==='account'){
