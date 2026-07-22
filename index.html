@@ -203,6 +203,37 @@
   .pos small{color:var(--muted);font-size:12px}
   .pos.me{border-color:var(--acc2)}
   .pos.me b{color:var(--acc2)}
+
+  /* Thinking DNA */
+  .dna-hero{background:linear-gradient(135deg,#1a1730,#12141c);border:1px solid var(--line2);position:relative;overflow:hidden}
+  .dna-hero:before{content:"🧬";position:absolute;right:-10px;top:-18px;font-size:120px;opacity:.05}
+  .dna-hero .lab{color:var(--acc2);font-weight:800;letter-spacing:2px;font-size:12px}
+  .dna-hero h2{margin:8px 0 6px;font-size:24px;font-weight:800;letter-spacing:-.3px}
+  .dna-sum{font-size:15px;line-height:1.7;color:var(--txt);max-width:60ch}
+  .dna-sum b{color:var(--acc2)}
+  .dna-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+  @media(max-width:760px){.dna-cols{grid-template-columns:1fr}}
+  .sw{display:grid;gap:9px}
+  .sw .it{display:flex;gap:9px;align-items:flex-start;font-size:14px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .sw .it.good{border-left:3px solid var(--good)}
+  .sw .it.bad{border-left:3px solid var(--warn)}
+  .sw .it .m{font-weight:800;flex:none}
+  .freq{display:grid;gap:11px}
+  .freq .row{display:flex;align-items:center;gap:12px;font-size:13px}
+  .freq .row .fn{width:140px;flex:none;font-weight:700}
+  .freq .row .fb{flex:1;height:10px;border-radius:99px;background:var(--panel2);overflow:hidden}
+  .freq .row .fb>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+  .freq .row .fp{width:46px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+  .chg{display:grid;gap:8px}
+  .chg .row{display:flex;align-items:center;gap:12px;font-size:14px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 13px}
+  .chg .row .nm{flex:1;font-weight:600}
+  .chg .fromto{font-variant-numeric:tabular-nums;font-weight:700;color:var(--muted2)}
+  .chg .fromto b{color:var(--txt)}
+  .chg .delta{width:54px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+  .delta.up{color:var(--good)}.delta.dn{color:var(--warn)}.delta.flat{color:var(--muted2)}
+  .dna-empty{text-align:center;padding:38px 18px}
+  .dna-empty .big{font-size:52px}
+  .dna-note{font-size:12.5px;color:var(--muted2);margin-top:10px}
 </style>
 </head>
 <body>
@@ -227,6 +258,7 @@
     <button data-tab="frameworks">🧩 사고 프레임</button>
     <button data-tab="models">📚 멘탈 모델</button>
     <button data-tab="coach">🎯 AI 코치</button>
+    <button data-tab="dna">🧬 Thinking DNA</button>
     <button data-tab="growth">📈 성장</button>
   </nav>
 
@@ -302,6 +334,11 @@
         <div class="qlist" id="coachOut"></div>
       </div>
     </div>
+  </section>
+
+  <!-- THINKING DNA -->
+  <section class="view" id="view-dna">
+    <div id="dnaBody"></div>
   </section>
 
   <!-- GROWTH -->
@@ -454,12 +491,17 @@ const DEFAULT = {
   streak:0, lastDay:null, xp:0, sessions:0,
   stats:{essence:12,logic:15,analysis:10,creative:8,judge:11,meta:9,learning:7,exec:6},
   wisdom:[],
+  fwCounts:{},          // 사고 프레임 사용 빈도 (Thinking DNA)
+  history:[],           // 세션별 능력치 스냅샷 (변화 추세)
+  framedSessions:0,     // 문제 정의 단계를 채운 횟수
+  actionSessions:0,     // 실행 계획을 남긴 횟수
   settings:{apiKey:'',model:'claude-sonnet-5'}
 };
 let S = load();
 function load(){
   try{const r=JSON.parse(localStorage.getItem('thinkos2'));
-    return r?{...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},wisdom:r.wisdom||[]}:structuredClone(DEFAULT)}
+    return r?{...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},
+      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[]}:structuredClone(DEFAULT)}
   catch(e){return structuredClone(DEFAULT)}
 }
 function save(){localStorage.setItem('thinkos2',JSON.stringify(S))}
@@ -474,6 +516,7 @@ function go(tab){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+tab));
   if(tab==='routine')renderRoutine();
+  if(tab==='dna')renderDNA();
   if(tab==='growth')renderGrowth();
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -618,12 +661,12 @@ function debateQuestions(claim){
 /* ============================================================
    OPTIONAL: real Claude API
 ============================================================ */
-async function askClaude(system,user){
+async function askClaude(system,user,opts){
   const {apiKey,model}=S.settings;
   const res=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
     headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model,max_tokens:800,system,messages:[{role:'user',content:user}]})
+    body:JSON.stringify({model,max_tokens:(opts&&opts.max_tokens)||800,system,messages:[{role:'user',content:user}]})
   });
   if(!res.ok)throw new Error('API '+res.status);
   const j=await res.json();return (j.content||[]).map(b=>b.text||'').join('').trim();
@@ -721,7 +764,15 @@ function rComplete(){
   if(S.lastDay!==day){const y=new Date(Date.now()-864e5).toISOString().slice(0,10);S.streak=(S.lastDay===y)?S.streak+1:1;S.lastDay=day;}
   S.sessions++;
   if(R.principle)S.wisdom.unshift({p:R.principle,src:R.problem,day});
-  const gains=grantGains();S.xp+=gains.xp;save();renderHome();
+  // --- Thinking DNA: 사고 데이터 축적 ---
+  if(R.fwId)S.fwCounts[R.fwId]=(S.fwCounts[R.fwId]||0)+1;
+  if((R.frame||'').trim().length>5)S.framedSessions=(S.framedSessions||0)+1;
+  if((R.action||'').trim().length>1)S.actionSessions=(S.actionSessions||0)+1;
+  const gains=grantGains();S.xp+=gains.xp;
+  S.history=S.history||[];
+  S.history.push({day,n:S.sessions,stats:{...S.stats}});
+  if(S.history.length>120)S.history=S.history.slice(-120);
+  save();renderHome();
   const c=currentLevel();
   document.getElementById('rBody').innerHTML=`
     <div class="reward">
@@ -787,6 +838,105 @@ async function doCoach(){
     <div class="qitem" style="animation-delay:${i*.08}s">
       <div class="num ${it.stance?'stance':''}" ${it.color?`style="color:${it.color}"`:''}>${it.stance||i+1}</div>
       <div><div class="qt">${it.q}</div>${it.why?`<div class="qwhy">${it.why}</div>`:''}</div></div>`).join('');
+}
+
+/* ============================================================
+   THINKING DNA — 사고 데이터를 성장 리포트로
+   앱의 가장 큰 자산은 사용자의 사고 데이터다.
+============================================================ */
+function renderDNA(){
+  const el=document.getElementById('dnaBody');
+  const N=S.sessions||0;
+  if(N===0){
+    el.innerHTML=`<div class="card dna-empty">
+      <div class="big">🧬</div>
+      <h2 style="margin:10px 0 6px">아직 사고 지문이 없습니다</h2>
+      <p style="color:var(--muted);margin:0">며칠간 훈련을 쌓으면, 당신이 <b>어떻게 생각하는 사람</b>인지가 데이터로 드러납니다.</p>
+      <div style="margin-top:18px"><button class="btn" onclick="go('routine')">첫 훈련 시작 →</button></div>
+    </div>`;
+    return;
+  }
+  const fwMeta=Object.fromEntries(FRAMEWORKS.map(f=>[f.id,f]));
+  const sorted=[...ABILITIES].sort((a,b)=>S.stats[b.key]-S.stats[a.key]);
+  const strengths=sorted.slice(0,3);
+
+  // 약점 신호 (측정 가능한 것만 정직하게)
+  const weak=[];
+  const bottom=sorted[sorted.length-1];
+  weak.push({m:bottom.icon,t:`<b>${bottom.name}</b>이(가) 가장 낮은 축 — 여기에 훈련을 집중하면 성장 폭이 크다`});
+  const thinkAxes=['essence','logic','analysis','creative','judge','meta'];
+  const thinkAvg=thinkAxes.reduce((s,k)=>s+S.stats[k],0)/thinkAxes.length;
+  if(S.stats.exec<thinkAvg-6)weak.push({m:'🚀',t:'<b>실행력이 사고력보다 낮음</b> — 생각을 검증 행동으로 옮기는 습관이 부족'});
+  const framedRate=(S.framedSessions||0)/N;
+  if(framedRate<0.5)weak.push({m:'🎯',t:`<b>문제 정의를 자주 건너뜀</b> (${Math.round(framedRate*100)}%만 재정의) — 진짜 문제부터 세워라`});
+  const total=Object.values(S.fwCounts||{}).reduce((a,b)=>a+b,0);
+  const rate=id=>(S.fwCounts?.[id]||0)/(total||1);
+  if(total>=3){
+    if(rate('inv')<0.05)weak.push({m:'🔄',t:'<b>역발상을 거의 쓰지 않음</b> — "어떻게 하면 망할까?"로 뒤집어 보라'});
+    if(rate('bayes')<0.05)weak.push({m:'🎲',t:'<b>반례·반증(확률 사고)을 거의 남기지 않음</b> — "내가 틀릴 확률은?"을 물어라'});
+  }
+
+  // 자주 쓰는 사고방식
+  const fwSorted=Object.entries(S.fwCounts||{}).sort((a,b)=>b[1]-a[1]);
+  const topFw=fwSorted[0]&&fwMeta[fwSorted[0][0]];
+  const freqHtml=total?fwSorted.map(([id,c])=>{const f=fwMeta[id];const pct=Math.round(c/total*100);
+      return `<div class="row"><span class="fn">${f.emoji} ${f.name}</span><span class="fb"><i style="width:${pct}%"></i></span><span class="fp">${pct}%</span></div>`}).join('')
+    :`<p style="color:var(--muted2);font-size:13px">사고 프레임을 선택한 훈련이 아직 없습니다.</p>`;
+
+  // 최근 변화
+  const hist=S.history||[];let chgHtml,period='';
+  if(hist.length>=2){
+    const first=hist[0].stats,last=hist[hist.length-1].stats;
+    period=`${hist[0].day} → ${hist[hist.length-1].day} · ${hist.length}회`;
+    chgHtml=ABILITIES.map(a=>({a,f:first[a.key],t:last[a.key]})).filter(r=>r.f!=null&&r.t!=null)
+      .map(r=>({...r,d:r.t-r.f})).sort((x,y)=>y.d-x.d)
+      .map(r=>{const cls=r.d>0?'up':r.d<0?'dn':'flat';const sign=r.d>0?'+':'';
+        return `<div class="row"><span class="nm">${r.a.icon} ${r.a.name}</span>
+          <span class="fromto"><b>${r.f}</b> → <b>${r.t}</b></span>
+          <span class="delta ${cls}">${sign}${r.d}</span></div>`}).join('');
+  }else{
+    chgHtml=`<p style="color:var(--muted2);font-size:13px">변화 추세는 <b>2회 이상</b> 훈련하면 나타납니다. (현재 ${hist.length}회)</p>`;
+  }
+
+  const summary=`당신은 <b>${strengths.map(s=>s.name).join(' · ')}</b>에 강한 사고 유형입니다.`
+    +(topFw?` 가장 자주 꺼내는 렌즈는 <b>${topFw.emoji} ${topFw.name}</b>이고,`:'')
+    +` ${N}회의 훈련 데이터가 이렇게 말합니다 — 아래는 기록이 아니라 성장 리포트입니다.`;
+
+  el.innerHTML=`
+    <div class="card dna-hero">
+      <div class="lab">🧬 THINKING DNA</div>
+      <h2>${N}회 훈련으로 분석한 당신의 사고 지문</h2>
+      <p class="dna-sum">${summary}</p>
+      ${hasAI()?`<div style="margin-top:14px"><button class="btn ghost sm" id="dnaAiBtn">🤖 AI 심층 총평 생성</button></div><div id="dnaAiOut"></div>`:''}
+    </div>
+    <div class="dna-cols">
+      <div class="card"><p class="sec-title" style="color:var(--good)">✔ 강점</p>
+        <div class="sw">${strengths.map(s=>`<div class="it good"><span class="m">${s.icon}</span><span><b>${s.name}</b> · ${S.stats[s.key]}점</span></div>`).join('')}</div></div>
+      <div class="card"><p class="sec-title" style="color:var(--warn)">⚠ 약점 & 사각지대</p>
+        <div class="sw">${weak.map(w=>`<div class="it bad"><span class="m">${w.m}</span><span>${w.t}</span></div>`).join('')}</div></div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <p class="sec-title">🧠 자주 사용하는 사고방식 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 사고의 편식을 드러낸다</span></p>
+      <div class="freq">${freqHtml}</div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <p class="sec-title">📈 능력치 변화 <span style="text-transform:none;font-weight:600;color:var(--muted2)">${period}</span></p>
+      <div class="chg">${chgHtml}</div>
+    </div>
+    <p class="dna-note">이 데이터는 이 브라우저에만 쌓입니다. 실제 서비스에선 개인 사고 프로필로 축적되어 코칭이 점점 정교해집니다 — 이것이 THINK OS의 해자입니다.</p>`;
+
+  const aiBtn=document.getElementById('dnaAiBtn');
+  if(aiBtn)aiBtn.onclick=()=>dnaAiSummary(strengths,weak,fwSorted.map(([id,c])=>`${fwMeta[id].name} ${Math.round(c/total*100)}%`));
+}
+async function dnaAiSummary(strengths,weak,freq){
+  const out=document.getElementById('dnaAiOut');
+  out.innerHTML=`<div class="thinking" style="margin-top:12px"><span class="d"></span> AI가 사고 프로필을 분석 중...</div>`;
+  try{
+    const sys='너는 THINK OS의 사고 분석가다. 사용자의 사고 데이터를 바탕으로, 격려가 아니라 날카롭고 구체적인 3~4문장 총평을 한국어로 써라. 강점을 어떻게 무기화하고 약점을 어떻게 보완할지 실전 조언을 담아라.';
+    const usr=`강점: ${strengths.map(s=>s.name).join(', ')}\n약점 신호: ${weak.map(w=>w.t.replace(/<[^>]+>/g,'')).join(' / ')}\n사고방식 빈도: ${freq.join(', ')}`;
+    const txt=await askClaude(sys,usr,{max_tokens:400});
+    out.innerHTML=`<div class="dna-sum" style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px">${txt.replace(/\n/g,'<br>')}</div>`;
+  }catch(e){out.innerHTML=`<p class="footnote">⚠️ AI 총평 생성 실패 — 위 규칙 기반 분석을 참고하세요.</p>`}
 }
 
 /* ============================================================

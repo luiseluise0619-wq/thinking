@@ -107,7 +107,50 @@ def growth(user_id: int):
                      principles=db.principles(user_id))
 
 
-# --- 4. 지식 그래프 (2차 기능 스텁) ---
+# --- 4. Thinking DNA: 사고 데이터를 성장 리포트로 (앱의 가장 큰 자산) ---
+@app.get("/dna/{user_id}")
+def thinking_dna(user_id: int):
+    hist = list(reversed(db.sessions(user_id)))  # 시간 오름차순
+    n = len(hist)
+    if n == 0:
+        return {"sessions": 0, "message": "아직 사고 지문이 없습니다. 훈련을 쌓으세요."}
+
+    latest = hist[-1]["scores"]
+    ranked = sorted(scoring.DIMENSIONS, key=lambda d: latest.get(d, 0), reverse=True)
+    strengths = [{"key": k, "name": scoring.DIM_KR[k], "score": latest.get(k)} for k in ranked[:3]]
+
+    # 약점 신호 (측정 가능한 것만)
+    weak = [{"signal": f"{scoring.DIM_KR[ranked[-1]]}이(가) 가장 낮은 축"}]
+    think = [d for d in scoring.DIMENSIONS if d != "exec"]
+    think_avg = sum(latest.get(d, 0) for d in think) / len(think)
+    if latest.get("exec", 0) < think_avg - 6:
+        weak.append({"signal": "실행력이 사고력보다 낮음 — 생각을 검증 행동으로 옮겨라"})
+    framed = sum(1 for h in hist if (h.get("frame") or "").strip())
+    if framed / n < 0.5:
+        weak.append({"signal": f"문제 정의를 자주 건너뜀 ({round(framed/n*100)}%만 재정의)"})
+
+    # 사고방식 사용 빈도
+    from collections import Counter
+    fw = Counter(h.get("framework") for h in hist if h.get("framework"))
+    total = sum(fw.values())
+    frequency = [{"framework": k, "count": c, "pct": round(c / total * 100)}
+                 for k, c in fw.most_common()] if total else []
+
+    # 능력치 변화 (첫→최근)
+    trend = {}
+    if n >= 2:
+        first = hist[0]["scores"]
+        for d in scoring.DIMENSIONS:
+            a, b = first.get(d), latest.get(d)
+            if a is not None and b is not None:
+                trend[d] = {"name": scoring.DIM_KR[d], "from": a, "to": b, "delta": b - a}
+
+    return {"sessions": n, "strengths": strengths, "weaknesses": weak,
+            "frequency": frequency, "trend": trend,
+            "principles": db.principles(user_id)}
+
+
+# --- 5. 지식 그래프 (2차 기능 스텁) ---
 @app.post("/knowledge")
 def add_knowledge(user_id: int, concept: str, relation: str = "", note: str = ""):
     db.add_knowledge(user_id, concept, relation, note)
