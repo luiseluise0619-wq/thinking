@@ -1,0 +1,16 @@
+services:
+  thinkos:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # 프로덕션에선 실제 도메인만 허용하세요 (예: https://think.example.com)
+      THINKOS_ALLOWED_ORIGINS: ${THINKOS_ALLOWED_ORIGINS:-*}
+    volumes:
+      - thinkos-data:/data
+    restart: unless-stopped
+
+volumes:
+  thinkos-data:

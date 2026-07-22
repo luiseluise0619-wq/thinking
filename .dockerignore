@@ -1,0 +1,10 @@
+.git
+.env
+**/__pycache__
+**/*.pyc
+**/thinkos.db
+*.sqlite3
+docs
+node_modules
+.DS_Store
+scratchpad

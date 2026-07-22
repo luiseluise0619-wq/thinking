@@ -1,27 +1,39 @@
 """
-THINK OS — Backend MVP (FastAPI)
+THINK OS — 사고 성장 운영체제 (FastAPI)
 
-MVP 범위 (사용자 1차 정의):
-  문제 입력 → AI 질문(Critic) → 사고 분석(점수) → 성장 기록
-핵심 차별점: AI Agent Orchestrator + Feedback/Growth 데이터 축적.
+한 서비스로 배포: 백엔드가 API + 프론트(index.html)를 함께 서빙한다.
+프론트는 백엔드가 서빙하면 same-origin 프록시를 자동 사용하므로,
+GEMINI_API_KEY는 서버에만 두면 되고 브라우저에 노출되지 않는다.
 
-실행:
+로컬 실행:
   pip install -r requirements.txt
-  uvicorn app.main:app --reload
-  # (선택) export ANTHROPIC_API_KEY=sk-ant-...  → 진짜 Claude 추론
-  # 키가 없으면 규칙 기반 엔진으로 동일하게 동작한다.
+  export GEMINI_API_KEY=AIza...           # (선택) 없으면 규칙 기반으로 동작
+  uvicorn app.main:app --host 0.0.0.0 --port 8000
+  # → http://localhost:8000  (앱)  ·  /docs (API)
+
+배포: Dockerfile / docker-compose.yml 참고.
 """
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
 from . import agents, db, llm, scoring
 from .schemas import AnalyzeIn, AnalyzeOut, AiIn, CoachIn, GrowthOut
 
-app = FastAPI(title="THINK OS API", version="0.1.0",
+# 프론트(index.html) 위치 — 기본은 레포 루트, 배포 시 THINKOS_FRONTEND로 지정
+FRONTEND = Path(os.getenv("THINKOS_FRONTEND",
+                          str(Path(__file__).resolve().parents[2] / "index.html")))
+# 허용 오리진 — 프로덕션에선 실제 도메인만. 기본 '*'(개발용)
+_ORIGINS = [o.strip() for o in os.getenv("THINKOS_ALLOWED_ORIGINS", "*").split(",") if o.strip()]
+
+app = FastAPI(title="THINK OS", version="1.0.0",
               description="사고 성장 운영체제 — Agent Orchestrator + 성장 데이터 플랫폼")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
+app.add_middleware(CORSMiddleware, allow_origins=_ORIGINS, allow_methods=["*"],
                    allow_headers=["*"])
 
 
@@ -30,15 +42,32 @@ def _startup():
     db.init()
 
 
-@app.get("/")
-def root():
+@app.get("/healthz")
+def healthz():
+    return {"ok": True, "ai_mode": llm.provider() or "rule-based-fallback"}
+
+
+@app.get("/api")
+def api_status():
     return {
-        "service": "THINK OS API",
+        "service": "THINK OS API", "version": "1.0.0",
         "ai_mode": llm.provider() or "rule-based-fallback",
         "agents": [{"key": a.key, "name": a.name, "role": a.role}
                    for a in agents.AGENTS.values()],
         "docs": "/docs",
     }
+
+
+@app.get("/", response_class=HTMLResponse)
+def serve_app():
+    """프론트 서빙 + same-origin 프록시 플래그 주입."""
+    if not FRONTEND.exists():
+        return HTMLResponse("<h1>THINK OS API</h1><p>프론트 파일이 없습니다. /docs 참고.</p>")
+    html = FRONTEND.read_text(encoding="utf-8")
+    # 백엔드가 서빙했음을 프론트에 알림 → 브라우저가 same-origin 프록시를 자동 사용
+    inject = "<script>window.THINKOS_API=location.origin;</script>"
+    return HTMLResponse(html.replace("</head>", inject + "</head>", 1)
+                        if "</head>" in html else inject + html)
 
 
 # --- 1. 사고 분석: 문제+답변 → 비판 질문 + 8축 점수 + 기록 ---

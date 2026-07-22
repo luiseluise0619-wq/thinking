@@ -81,6 +81,41 @@ curl -X POST localhost:8000/thinking/analyze -H 'content-type: application/json'
 
 ---
 
+## 🚀 배포 (단일 서비스)
+
+백엔드가 **API + 프론트를 함께 서빙**한다. 프론트는 백엔드가 서빙하면 same-origin 프록시를
+자동으로 쓰므로, **키는 서버에만** 두면 되고 브라우저 설정이 필요 없다.
+
+### Docker (권장 · 한 명령)
+```bash
+cp .env.example .env      # GEMINI_API_KEY, THINKOS_ALLOWED_ORIGINS 채우기
+docker compose up -d      # → http://localhost:8000  (앱)
+```
+- 사고 데이터(SQLite)는 `thinkos-data` 볼륨에 영속.
+- 헬스체크 `/healthz` 내장.
+
+### Docker 없이 (프로덕션 서버)
+```bash
+cd backend && pip install -r requirements.txt
+export GEMINI_API_KEY=AIza...
+export THINKOS_ALLOWED_ORIGINS=https://your-domain.com   # 프로덕션은 실제 도메인만
+gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000
+```
+Railway·Render·Fly.io 등 컨테이너 PaaS에 그대로 올릴 수 있다(포트 8000, `/healthz`).
+
+### 환경변수
+| 변수 | 설명 | 기본 |
+|---|---|---|
+| `GEMINI_API_KEY` | 서버 보관 · 없으면 규칙 기반 | (없음) |
+| `THINKOS_GEMINI_MODEL` | 모델 | `gemini-2.5-flash` |
+| `THINKOS_ALLOWED_ORIGINS` | CORS 허용 오리진(쉼표) | `*` (개발) |
+| `THINKOS_DB` | SQLite 경로 | `backend/thinkos.db` |
+
+> 출시 체크: (1) `.env`에 실제 키, (2) `THINKOS_ALLOWED_ORIGINS`를 실제 도메인으로,
+> (3) HTTPS 종단(리버스 프록시/PaaS), (4) 볼륨 백업. 다중 인스턴스로 확장 시 SQLite → PostgreSQL(ARCHITECTURE §4).
+
+---
+
 ## 품질 원칙 (기능보다 질)
 
 이 앱의 가치는 UI가 아니라 **질문의 질**과 **지표의 신뢰성**이다.

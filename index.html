@@ -1068,7 +1068,12 @@ function debateQuestions(claim){
 function curProvider(){return 'gemini'}
 function curKey(){return (S.settings.keys||{}).gemini||''}
 function curModel(){return (S.settings.models||{}).gemini||PROVIDERS.gemini.models[0]}
-function curBackend(){return ((S.settings.backendUrl||'').trim().replace(/\/+$/,''))}
+function curBackend(){
+  const u=(S.settings.backendUrl||'').trim().replace(/\/+$/,'');
+  if(u)return u;                                    // 사용자가 지정한 URL 우선
+  if(typeof window!=='undefined'&&window.THINKOS_API)return window.THINKOS_API;  // 백엔드가 서빙 중 → same-origin
+  return '';
+}
 function providerName(){return curBackend()?'Gemini · 프록시':'Gemini'}
 const hasAI=()=>!!(curBackend()||curKey().trim());
 
