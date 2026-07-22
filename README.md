@@ -103,6 +103,17 @@ gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 2 -b 0.0.0.0:8000
 ```
 Railway·Render·Fly.io 등 컨테이너 PaaS에 그대로 올릴 수 있다(포트 8000, `/healthz`).
 
+### Vercel / Cloudflare Pages (서버리스 · 데이터는 클라이언트)
+프론트가 서버에서 필요로 하는 건 **정적 파일 + stateless `/ai/complete` 프록시**뿐이라,
+FastAPI 없이 서버리스 함수 하나로 배포할 수 있다. (사고 데이터는 브라우저 localStorage에 저장)
+
+- **Vercel**: 이 레포를 import → 자동으로 `index.html`(정적) + `api/ai/complete.py`(함수)가 뜬다.
+  `vercel.json`이 `/ai/complete` → `/api/ai/complete`로 rewrite. 대시보드에서 **환경변수 `GEMINI_API_KEY`** 설정.
+- **Cloudflare Pages**: 빌드 명령 없음, 출력 디렉터리 `/`(루트). `functions/ai/complete.js`가 `/ai/complete`를 처리.
+  Pages → Settings → **환경변수 `GEMINI_API_KEY`** 설정.
+
+두 경우 모두 프론트는 same-origin `/ai/complete`를 자동으로 사용한다(설정 불필요). 키가 없으면 규칙 기반으로 폴백.
+
 ### 환경변수
 | 변수 | 설명 | 기본 |
 |---|---|---|

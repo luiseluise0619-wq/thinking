@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="매일 하나의 질문으로 사고를 벼리는 훈련. AI가 답 대신 당신의 생각을 반박하고, 그 과정이 데이터로 쌓인다." />
+<meta name="theme-color" content="#E8E4DB" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#181611" media="(prefers-color-scheme: dark)" />
 <title>THINK OS — 사고 성장 운영체제</title>
 <style>
   :root{
@@ -448,7 +451,7 @@
 </div>
 
 <!-- FEEDBACK / 실행 회고 MODAL -->
-<div class="modal" id="feedbackModal">
+<div class="modal" id="feedbackModal" role="dialog" aria-modal="true" aria-label="실행 회고">
   <div class="box">
     <button class="icon-btn close" onclick="closeFeedback()">✕</button>
     <h2 style="font-family:var(--serif)">실행 회고</h2>
@@ -469,7 +472,7 @@
 </div>
 
 <!-- ONBOARDING MODAL (first run) -->
-<div class="modal" id="onboard">
+<div class="modal" id="onboard" role="dialog" aria-modal="true" aria-label="환영">
   <div class="box" style="max-width:460px">
     <p class="page-kicker" style="margin-bottom:10px">환영합니다</p>
     <h2 style="font-family:var(--serif);font-size:25px;margin:0 0 10px;line-height:1.25">답을 주는 앱이 아닙니다.<br>사고를 벼리는 훈련장입니다.</h2>
@@ -485,7 +488,7 @@
 </div>
 
 <!-- SETTINGS MODAL -->
-<div class="modal" id="settings">
+<div class="modal" id="settings" role="dialog" aria-modal="true" aria-label="설정">
   <div class="box">
     <button class="icon-btn close" onclick="closeSettings()">✕</button>
     <h2>설정</h2>
@@ -729,9 +732,10 @@ function renderHome(){
   const depth=g.metrics.depth!=null?('Lv'+depthToLv(g.metrics.depth)):'—';
   const w=(S.wisdom&&S.wisdom[0]);
   const qWords=dailyProblem().split(' ').map((w,i)=>`<span class="w" style="animation-delay:${(i*0.07).toFixed(2)}s">${w}</span>`).join(' ');
+  const td=new Date();
   document.getElementById('homeBody').innerHTML=`
     <section class="today">
-      <div class="kicker"><span class="dot"></span> 오늘의 질문 · DAY ${S.sessions+1}</div>
+      <div class="kicker"><span class="dot"></span> 오늘의 질문 · ${td.getMonth()+1}월 ${td.getDate()}일</div>
       <h1 class="q anim">${qWords}</h1>
       <p class="why">답을 검색하지 마라. <b>더 깊이 생각하라.</b> AI는 답 대신 당신의 사고를 반박하고, 그 과정이 매일 데이터로 쌓여 당신만의 사고 유전자가 된다.</p>
       <div class="cta-row">
@@ -1070,9 +1074,12 @@ function curKey(){return (S.settings.keys||{}).gemini||''}
 function curModel(){return (S.settings.models||{}).gemini||PROVIDERS.gemini.models[0]}
 function curBackend(){
   const u=(S.settings.backendUrl||'').trim().replace(/\/+$/,'');
-  if(u)return u;                                    // 사용자가 지정한 URL 우선
-  if(typeof window!=='undefined'&&window.THINKOS_API)return window.THINKOS_API;  // 백엔드가 서빙 중 → same-origin
-  return '';
+  if(u)return u;                                    // 1) 사용자가 지정한 URL 우선
+  if(typeof window!=='undefined'&&window.THINKOS_API)return window.THINKOS_API;  // 2) 백엔드가 주입한 플래그
+  // 3) http(s)로 서빙되면 same-origin 프록시(/ai/complete)를 기본 사용 — Vercel·Cloudflare·자체 서버 등
+  //    (claude.ai 아티팩트 프리뷰는 백엔드가 없으므로 제외 → 규칙 기반)
+  if(typeof location!=='undefined'&&/^https?:$/.test(location.protocol||'')&&!/claude/i.test(location.hostname||''))return location.origin;
+  return '';                                        // file:// · 아티팩트 → 규칙 기반
 }
 function providerName(){return curBackend()?'Gemini · 프록시':'Gemini'}
 const hasAI=()=>!!(curBackend()||curKey().trim());
@@ -1538,9 +1545,11 @@ function saveSettings(){
 function resetAll(){if(confirm('모든 진행 상황·능력치·지혜를 초기화할까요?')){localStorage.removeItem('thinkos2');S=structuredClone(DEFAULT);save();initAll();closeSettings()}}
 M.addEventListener('click',e=>{if(e.target===M)closeSettings()});
 
-// 데이터 백업 — 파일럿의 30일치 사고 데이터를 지키고, 코호트 제출물로 쓴다
+// 데이터 백업 — 파일럿의 사고 데이터를 지키고 코호트 제출물로 쓴다.
+// 설정(API 키 등)은 개인정보라 내보내지 않는다.
 function exportData(){
-  const payload={app:'thinkos',v:2,exportedAt:todayStr(),data:S};
+  const {settings,...rest}=S;
+  const payload={app:'thinkos',v:2,exportedAt:todayStr(),data:rest};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   a.href=url;a.download=`thinkos-data-${todayStr()}.json`;a.click();
@@ -1555,8 +1564,9 @@ function importData(file){
       const d=(p&&p.data)?p.data:p;                 // {app,data} 또는 원본 S 둘 다 허용
       if(!d||typeof d.sessions!=='number'||!d.stats)throw new Error('형식이 올바르지 않습니다');
       if(!confirm(`가져오면 현재 데이터를 덮어씁니다. (불러올 세션 ${d.sessions}회) 계속할까요?`))return;
+      const keepSettings=S.settings;               // 이 기기의 설정(키·백엔드)은 유지
       localStorage.setItem('thinkos2',JSON.stringify(d));
-      S=load();save();initAll();closeSettings();
+      S=load();S.settings=keepSettings;save();initAll();closeSettings();
       alert('가져오기 완료 — 데이터를 복원했습니다.');
     }catch(e){alert('가져오기 실패: '+e.message);}
   };
@@ -1574,6 +1584,9 @@ function finishOnboard(startNow){
   document.getElementById('onboard').classList.remove('open');
   if(startNow)startQuick();
 }
+
+/* ---------- 접근성: Esc로 모든 모달 닫기 ---------- */
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'));});
 
 /* ---------- 테마 (라이트 / 다크) ---------- */
 function applyTheme(t){if(t)document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme;}

@@ -18,7 +18,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+import time
+from collections import deque
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
@@ -126,9 +129,28 @@ async def resolve_action(action_id: int, status: str, result: str = ""):
     return {"action": row, "lesson": lesson, "source": ref["source"]}
 
 
+# --- 간단한 IP 레이트 리밋 (오픈 프록시 남용·쿼터 소진 방지) ---
+_RL: dict[str, deque] = {}
+_RL_MAX = int(os.getenv("THINKOS_RL_PER_MIN", "30"))
+
+
+def _rate_ok(ip: str) -> bool:
+    now = time.time()
+    dq = _RL.setdefault(ip, deque())
+    while dq and now - dq[0] > 60:
+        dq.popleft()
+    if len(dq) >= _RL_MAX:
+        return False
+    dq.append(now)
+    return True
+
+
 # --- 범용 LLM 프록시: 프론트가 키 없이 서버를 거쳐 호출 (키 노출·CORS 해결) ---
 @app.post("/ai/complete")
-async def ai_complete(body: AiIn):
+async def ai_complete(body: AiIn, request: Request):
+    ip = request.client.host if request.client else "?"
+    if not _rate_ok(ip):
+        raise HTTPException(429, "rate_limited")
     if not llm.has_key():
         raise HTTPException(503, "no_provider")  # 프론트는 규칙 기반으로 폴백
     if not body.user.strip():

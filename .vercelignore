@@ -1,0 +1,8 @@
+# Vercel는 index.html(정적) + api/(서버리스)만 필요. 나머지는 제외.
+backend
+functions
+Dockerfile
+docker-compose.yml
+docs
+scratchpad
+*.sqlite3
