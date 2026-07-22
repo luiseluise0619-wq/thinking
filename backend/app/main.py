@@ -34,7 +34,7 @@ def _startup():
 def root():
     return {
         "service": "THINK OS API",
-        "ai_mode": "claude" if llm.has_key() else "rule-based-fallback",
+        "ai_mode": llm.provider() or "rule-based-fallback",
         "agents": [{"key": a.key, "name": a.name, "role": a.role}
                    for a in agents.AGENTS.values()],
         "docs": "/docs",

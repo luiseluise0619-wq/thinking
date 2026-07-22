@@ -459,18 +459,21 @@
   <div class="box">
     <button class="icon-btn close" onclick="closeSettings()">✕</button>
     <h2>설정</h2>
-    <p class="hint">기본값은 규칙 기반 엔진으로 <b>키 없이도 완전히 작동</b>합니다. 진짜 AI 반박·코칭을 원하면 Claude API 키를 연결하세요. (키는 이 브라우저에만 저장됩니다.)</p>
+    <p class="hint">기본값은 규칙 기반 엔진으로 <b>키 없이도 완전히 작동</b>합니다. 진짜 AI 반박·코칭을 원하면 <b>Claude 또는 Gemini</b> 키를 연결하세요. (키는 이 브라우저에만 저장됩니다.)</p>
     <div class="field">
-      <label>Claude API Key <span style="text-transform:none;color:var(--muted2)">(선택)</span></label>
+      <label>AI 프로바이더</label>
+      <select id="provider" onchange="onProviderChange()">
+        <option value="claude">Claude (Anthropic)</option>
+        <option value="gemini">Gemini (Google)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label><span id="keyLabel">Claude</span> API Key <span style="text-transform:none;color:var(--muted2)">(선택 · <a id="keyLink" href="#" target="_blank" rel="noopener" style="color:var(--acc2)">발급</a>)</span></label>
       <input id="apiKey" type="password" placeholder="sk-ant-..." autocomplete="off" />
     </div>
     <div class="field">
       <label>모델</label>
-      <select id="model">
-        <option value="claude-sonnet-5">claude-sonnet-5 (추천)</option>
-        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (빠름/저렴)</option>
-        <option value="claude-opus-4-8">claude-opus-4-8 (최고 품질)</option>
-      </select>
+      <select id="model"></select>
     </div>
     <div class="field">
       <button class="btn wide" onclick="saveSettings()">저장</button>
@@ -612,6 +615,16 @@ const PROBLEMS = [
 
 const COACH_EXAMPLES = ['퇴사할까?','이 사업 시작할까?','대학원 갈까?','AI가 의료를 혁신할 것이다','이 사람과 계속 만날까?'];
 
+// 멀티 프로바이더 — Claude / Gemini 선택 (아키텍처의 LLM 라우팅 계층)
+const PROVIDERS={
+  claude:{name:'Claude', keyHint:'sk-ant-...',
+    models:['claude-sonnet-5','claude-haiku-4-5-20251001','claude-opus-4-8'],
+    getKey:'https://console.anthropic.com/settings/keys'},
+  gemini:{name:'Gemini', keyHint:'AIza...',
+    models:['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'],
+    getKey:'https://aistudio.google.com/apikey'},
+};
+
 // ---------- State ----------
 const DEFAULT = {
   streak:0, lastDay:null, xp:0, sessions:0,
@@ -624,7 +637,7 @@ const DEFAULT = {
   actions:[],           // 실행 약속 → 결과 → 교훈 (피드백 루프)
   seq:0,
   onboarded:false,      // 첫 실행 안내 여부
-  settings:{apiKey:'',model:'claude-sonnet-5'}
+  settings:{provider:'claude', keys:{claude:'',gemini:''}, models:{claude:'claude-sonnet-5',gemini:'gemini-2.5-flash'}}
 };
 let S = load();
 function load(){
@@ -634,6 +647,14 @@ function load(){
       wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[]};
     // 구버전 원칙({p,src,day})을 진화형 모델로 정규화
     s.wisdom=s.wisdom.map(w=>w.text!==undefined?w:{id:(w.id||++s.seq),text:w.p||w.text||'',src:w.src||'',day:w.day||'',cases:w.cases||[],revisions:w.revisions||[]});
+    // 구버전 단일 프로바이더 설정({apiKey,model})을 멀티 프로바이더로 마이그레이션
+    const st=s.settings;
+    st.keys=(st.keys&&typeof st.keys==='object')?st.keys:{claude:'',gemini:''};
+    st.models=(st.models&&typeof st.models==='object')?st.models:{claude:'claude-sonnet-5',gemini:'gemini-2.5-flash'};
+    if(typeof st.apiKey==='string'&&st.apiKey&&!st.keys.claude)st.keys.claude=st.apiKey;  // 구버전 키 이관
+    if(typeof st.model==='string')st.models.claude=st.model;                                // 구버전 모델 이관
+    if(!st.provider)st.provider='claude';
+    delete st.apiKey;delete st.model;
     return s;
   }catch(e){return structuredClone(DEFAULT)}
 }
@@ -1007,19 +1028,35 @@ function debateQuestions(claim){
 }
 
 /* ============================================================
-   OPTIONAL: real Claude API
+   OPTIONAL: 멀티 프로바이더 LLM (Claude / Gemini)
 ============================================================ */
-async function askClaude(system,user,opts){
-  const {apiKey,model}=S.settings;
+function curProvider(){return S.settings.provider||'claude'}
+function curKey(){return (S.settings.keys||{})[curProvider()]||''}
+function curModel(){return (S.settings.models||{})[curProvider()]||PROVIDERS[curProvider()].models[0]}
+function providerName(){return PROVIDERS[curProvider()].name}
+const hasAI=()=>!!curKey().trim();
+
+async function askAI(system,user,opts){
+  const provider=curProvider(),key=curKey(),model=curModel(),mt=(opts&&opts.max_tokens)||800;
+  if(provider==='gemini'){
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:mt,temperature:0.7}})
+    });
+    if(!res.ok)throw new Error('Gemini '+res.status);
+    const j=await res.json();
+    return ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||'').join('').trim();
+  }
+  // Claude (Anthropic Messages API)
   const res=await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST',
-    headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model,max_tokens:(opts&&opts.max_tokens)||800,system,messages:[{role:'user',content:user}]})
+    headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model,max_tokens:mt,system,messages:[{role:'user',content:user}]})
   });
-  if(!res.ok)throw new Error('API '+res.status);
+  if(!res.ok)throw new Error('Claude '+res.status);
   const j=await res.json();return (j.content||[]).map(b=>b.text||'').join('').trim();
 }
-const hasAI=()=>!!(S.settings.apiKey&&S.settings.apiKey.startsWith('sk-'));
+const askClaude=askAI;  // 하위 호환 별칭
 function splitLines(txt,n){return txt.split('\n').map(s=>s.replace(/^[-•\d.)\s]+/,'').trim()).filter(Boolean).slice(0,n)}
 
 // HUMAN OS 코치 정체성 — 모든 AI 질문의 공통 전제 (사용자가 스스로 성장하게 만든다)
@@ -1163,7 +1200,7 @@ async function runAttack(){
     ? '📖 배우는 단계로 감지 — 공격보다 <b>구조부터</b> 세운다.'
     : (data.surface?'❌ 표면적인 답변이다. 더 내려가야 한다.':'🤔 방향은 있다. 하지만 검증해보자.');
   box.innerHTML=`
-    <div class="who"><span class="dot">🤖</span> AI 사고 코치 ${data.ai?'<span class="badge-ai">REAL AI</span>':''}
+    <div class="who"><span class="dot">🤖</span> AI 사고 코치 ${data.ai?`<span class="badge-ai">${providerName()}</span>`:''}
       <span class="stance-chip">${st.icon} ${st.label} · ${st.plan}</span></div>
     <div class="verdict ${data.surface&&data.stance!=='learn'?'bad':'ok'}">${verdict}</div>
     <ul>${data.qs.map(q=>`<li>${q}</li>`).join('')}</ul>
@@ -1236,7 +1273,7 @@ function renderCoach(){
   document.getElementById('coachMode').onclick=e=>{const b=e.target.closest('button');if(!b)return;
     coachMode=b.dataset.mode;document.querySelectorAll('#coachMode button').forEach(x=>x.classList.toggle('active',x===b));
     document.getElementById('coachInput').placeholder=coachMode==='debate'?'주장을 입력하세요 (AI가 여러 입장에서 공격)':'고민을 입력하세요 (AI가 질문으로 안내)';};
-  document.getElementById('coachAiBadge').style.display=hasAI()?'inline-block':'none';
+  const cb=document.getElementById('coachAiBadge');cb.textContent=providerName();cb.style.display=hasAI()?'inline-block':'none';
 }
 async function doCoach(){
   const v=document.getElementById('coachInput').value.trim();if(!v)return;
@@ -1441,9 +1478,27 @@ function wisdomRevise(id){
    SETTINGS
 ============================================================ */
 const M=document.getElementById('settings');
-document.getElementById('settingsBtn').onclick=()=>{document.getElementById('apiKey').value=S.settings.apiKey;document.getElementById('model').value=S.settings.model;M.classList.add('open')};
+function fillModelOptions(provider){
+  const sel=document.getElementById('model');const chosen=(S.settings.models||{})[provider];
+  sel.innerHTML=PROVIDERS[provider].models.map((m,i)=>`<option value="${m}"${m===chosen?' selected':''}>${m}${i===0?' (추천)':''}</option>`).join('');
+}
+function onProviderChange(){
+  const p=document.getElementById('provider').value;
+  document.getElementById('apiKey').value=(S.settings.keys||{})[p]||'';
+  document.getElementById('apiKey').placeholder=PROVIDERS[p].keyHint;
+  document.getElementById('keyLabel').textContent=PROVIDERS[p].name;
+  document.getElementById('keyLink').href=PROVIDERS[p].getKey;
+  fillModelOptions(p);
+}
+document.getElementById('settingsBtn').onclick=()=>{document.getElementById('provider').value=curProvider();onProviderChange();M.classList.add('open')};
 function closeSettings(){M.classList.remove('open')}
-function saveSettings(){S.settings.apiKey=document.getElementById('apiKey').value.trim();S.settings.model=document.getElementById('model').value;save();closeSettings();renderCoach();renderHome()}
+function saveSettings(){
+  const p=document.getElementById('provider').value;
+  S.settings.provider=p;
+  S.settings.keys=S.settings.keys||{};S.settings.keys[p]=document.getElementById('apiKey').value.trim();
+  S.settings.models=S.settings.models||{};S.settings.models[p]=document.getElementById('model').value;
+  save();closeSettings();renderCoach();renderHome();
+}
 function resetAll(){if(confirm('모든 진행 상황·능력치·지혜를 초기화할까요?')){localStorage.removeItem('thinkos2');S=structuredClone(DEFAULT);save();initAll();closeSettings()}}
 M.addEventListener('click',e=>{if(e.target===M)closeSettings()});
 

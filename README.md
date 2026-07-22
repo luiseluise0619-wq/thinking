@@ -46,7 +46,7 @@ python3 -m http.server 8080   # → http://localhost:8080
 ```
 - 오늘의 훈련 · 사고 프레임(10) · 멘탈 모델 라이브러리 · AI 코치(소크라테스/논쟁) · 성장 대시보드
 - 진행 상황은 브라우저 `localStorage`에 저장된다.
-- 설정(⚙️)에서 Claude API 키를 넣으면 진짜 AI 반박/코칭이 켜진다(개인 실험용).
+- 설정(⚙️)에서 **프로바이더(Claude / Gemini)**를 고르고 API 키를 넣으면 진짜 AI 반박/코칭이 켜진다(개인 실험용).
 
 ## ② 백엔드 MVP 실행
 
@@ -54,8 +54,10 @@ python3 -m http.server 8080   # → http://localhost:8080
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload
-# (선택) 진짜 Claude 추론:
-export ANTHROPIC_API_KEY=sk-ant-...
+# (선택) 진짜 추론 — 둘 중 하나:
+export ANTHROPIC_API_KEY=sk-ant-...     # Claude
+export GEMINI_API_KEY=AIza...           # Gemini
+# 둘 다 있으면 THINKOS_PROVIDER=claude|gemini 로 선택
 ```
 → `http://localhost:8000/docs` (Swagger)
 
