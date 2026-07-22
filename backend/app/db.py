@@ -17,7 +17,16 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    email TEXT UNIQUE,
+    password_hash TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 계정별 사고 데이터(프론트 S 블롭) — 멀티기기 동기화
+CREATE TABLE IF NOT EXISTS user_state (
+    user_id INTEGER PRIMARY KEY,
+    state TEXT,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS thinking_sessions (
@@ -90,9 +99,66 @@ def conn():
 def init() -> None:
     with conn() as c:
         c.executescript(SCHEMA)
-        # seed a demo user so the MVP is usable immediately
+        # 기존 DB 마이그레이션 — 없는 컬럼만 추가 (best-effort)
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(users)")}
+        for col, ddl in (("email", "email TEXT"), ("password_hash", "password_hash TEXT")):
+            if col not in cols:
+                c.execute(f"ALTER TABLE users ADD COLUMN {ddl}")
+        # seed a demo user so the anonymous/structured endpoints work
         if not c.execute("SELECT 1 FROM users LIMIT 1").fetchone():
             c.execute("INSERT INTO users (name) VALUES (?)", ("demo",))
+
+
+# ---- accounts ----
+def create_user(name: str, email: str, password_hash: str) -> int:
+    with conn() as c:
+        return c.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?,?,?)",
+            (name, email.lower(), password_hash)).lastrowid
+
+
+def user_by_email(email: str) -> dict | None:
+    with conn() as c:
+        r = c.execute("SELECT * FROM users WHERE email=?", (email.lower(),)).fetchone()
+    return dict(r) if r else None
+
+
+def user_by_id(uid: int) -> dict | None:
+    with conn() as c:
+        r = c.execute("SELECT id, name, email, created_at FROM users WHERE id=?", (uid,)).fetchone()
+    return dict(r) if r else None
+
+
+# ---- per-user state (multi-device sync) ----
+def get_state(uid: int) -> dict | None:
+    with conn() as c:
+        r = c.execute("SELECT state FROM user_state WHERE user_id=?", (uid,)).fetchone()
+    return json.loads(r["state"]) if r and r["state"] else None
+
+
+def put_state(uid: int, state: dict) -> None:
+    with conn() as c:
+        c.execute(
+            """INSERT INTO user_state (user_id, state, updated_at)
+               VALUES (?,?,CURRENT_TIMESTAMP)
+               ON CONFLICT(user_id) DO UPDATE SET state=excluded.state, updated_at=CURRENT_TIMESTAMP""",
+            (uid, json.dumps(state, ensure_ascii=False)))
+
+
+def all_states() -> list[dict]:
+    """검증/코호트 집계용 — 모든 계정의 state."""
+    with conn() as c:
+        rows = c.execute(
+            """SELECT u.id, u.email, s.state, s.updated_at
+               FROM user_state s JOIN users u ON u.id=s.user_id""").fetchall()
+    out = []
+    for r in rows:
+        try:
+            out.append({"uid": r["id"], "email": r["email"],
+                        "updated_at": r["updated_at"], "state": json.loads(r["state"] or "{}")})
+        except Exception:
+            pass
+    return out
 
 
 # ---- thinking sessions ----

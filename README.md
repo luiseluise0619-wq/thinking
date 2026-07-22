@@ -114,6 +114,16 @@ FastAPI 없이 서버리스 함수 하나로 배포할 수 있다. (사고 데�
 
 두 경우 모두 프론트는 same-origin `/ai/complete`를 자동으로 사용한다(설정 불필요). 키가 없으면 규칙 기반으로 폴백.
 
+### 계정 · 서버 저장 · 검증 (컨테이너 필요)
+로그인/멀티기기 동기화/코호트 검증은 **영속 DB**가 필요하므로 **컨테이너 배포(Railway·Render·Fly / Docker)** 에서만 동작한다.
+(바닐라 Vercel·CF 서버리스는 SQLite가 휘발 → 계정 미지원. 서버리스로 가려면 Postgres/Neon/Turso 등 외부 DB 연결이 별도로 필요.)
+
+- **인증**: `POST /auth/register`·`/auth/login` → 서명 토큰(HMAC). 비밀번호는 PBKDF2 해싱. **의존성 0**(stdlib).
+- **동기화**: 로그인하면 `PUT/GET /me/state`로 사고 데이터가 계정에 저장·복원(멀티기기). 비로그인은 localStorage로 계속 동작.
+- **검증**: `GET /admin/cohort` (헤더 `x-admin-secret`) — 참가자 코호트의 본질 도달률·반례·실행 완료율 평균과
+  **본질 도달률이 오른 사용자 수**를 집계 → "30일 뒤 사고가 실제로 나아졌는가"를 서버에서 확인.
+- **필수 env**: `THINKOS_SECRET`(토큰 서명, 프로덕션 랜덤), (검증용) `THINKOS_ADMIN_SECRET`.
+
 ### 환경변수
 | 변수 | 설명 | 기본 |
 |---|---|---|
@@ -121,6 +131,9 @@ FastAPI 없이 서버리스 함수 하나로 배포할 수 있다. (사고 데�
 | `THINKOS_GEMINI_MODEL` | 모델 | `gemini-2.5-flash` |
 | `THINKOS_ALLOWED_ORIGINS` | CORS 허용 오리진(쉼표) | `*` (개발) |
 | `THINKOS_DB` | SQLite 경로 | `backend/thinkos.db` |
+| `THINKOS_SECRET` | 계정 토큰 서명 키(프로덕션 필수 랜덤) | `dev-...` |
+| `THINKOS_ADMIN_SECRET` | 코호트 검증 접근 시크릿 | (없으면 비활성) |
+| `THINKOS_RL_PER_MIN` | `/ai/complete` IP 분당 한도 | `30` |
 
 > 출시 체크: (1) `.env`에 실제 키, (2) `THINKOS_ALLOWED_ORIGINS`를 실제 도메인으로,
 > (3) HTTPS 종단(리버스 프록시/PaaS), (4) 볼륨 백업. 다중 인스턴스로 확장 시 SQLite → PostgreSQL(ARCHITECTURE §4).

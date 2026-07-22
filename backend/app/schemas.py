@@ -36,6 +36,21 @@ class AiIn(BaseModel):
     max_tokens: int = 800
 
 
+class RegisterIn(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class StateIn(BaseModel):
+    state: dict
+
+
 class GrowthOut(BaseModel):
     sessions: int
     latest_scores: dict

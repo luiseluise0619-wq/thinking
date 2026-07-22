@@ -21,12 +21,13 @@ from pathlib import Path
 import time
 from collections import deque
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-from . import agents, db, llm, scoring
-from .schemas import AnalyzeIn, AnalyzeOut, AiIn, CoachIn, GrowthOut
+from . import agents, auth, db, llm, scoring
+from .schemas import (AnalyzeIn, AnalyzeOut, AiIn, CoachIn, GrowthOut,
+                      LoginIn, RegisterIn, StateIn)
 
 # 프론트(index.html) 위치 — 기본은 레포 루트, 배포 시 THINKOS_FRONTEND로 지정
 FRONTEND = Path(os.getenv("THINKOS_FRONTEND",
@@ -127,6 +128,101 @@ async def resolve_action(action_id: int, status: str, result: str = ""):
     if lesson:
         db.add_principle(row["user_id"], lesson, "🔁 " + (row.get("problem") or ""))
     return {"action": row, "lesson": lesson, "source": ref["source"]}
+
+
+# ==========================================================================
+#  계정 (이메일+비밀번호) · 서버 저장 (멀티기기 동기화)
+# ==========================================================================
+def current_user(authorization: str = Header(default="")) -> int:
+    tok = authorization[7:].strip() if authorization[:7].lower() == "bearer " else ""
+    uid = auth.verify_token(tok)
+    if not uid or not db.user_by_id(uid):
+        raise HTTPException(401, "unauthorized")
+    return uid
+
+
+@app.post("/auth/register")
+def register(body: RegisterIn):
+    email = body.email.strip().lower()
+    if "@" not in email or "." not in email:
+        raise HTTPException(400, "invalid_email")
+    if len(body.password) < 6:
+        raise HTTPException(400, "weak_password")
+    if db.user_by_email(email):
+        raise HTTPException(409, "email_taken")
+    uid = db.create_user(body.name.strip() or email.split("@")[0], email,
+                         auth.hash_password(body.password))
+    return {"token": auth.make_token(uid), "user": db.user_by_id(uid)}
+
+
+@app.post("/auth/login")
+def login(body: LoginIn):
+    u = db.user_by_email(body.email.strip())
+    if not u or not u.get("password_hash") or not auth.verify_password(body.password, u["password_hash"]):
+        raise HTTPException(401, "bad_credentials")
+    return {"token": auth.make_token(u["id"]), "user": db.user_by_id(u["id"])}
+
+
+@app.get("/me")
+def me(uid: int = Depends(current_user)):
+    return {"user": db.user_by_id(uid)}
+
+
+@app.get("/me/state")
+def get_my_state(uid: int = Depends(current_user)):
+    return {"state": db.get_state(uid)}
+
+
+@app.put("/me/state")
+def put_my_state(body: StateIn, uid: int = Depends(current_user)):
+    db.put_state(uid, body.state)
+    return {"ok": True}
+
+
+# --- 검증: 코호트 지표 집계 (관리자 전용 · THINKOS_ADMIN_SECRET) ---
+def _user_metrics(state: dict) -> dict:
+    H = [h for h in (state.get("history") or []) if h.get("metrics")]
+    n = len(H)
+    rate = lambda f: (sum(1 for h in H if f(h)) / n) if n else None
+    win = max(1, n // 2)
+    early, recent = H[:win], H[win:] or H[-win:]
+    er = lambda arr: (sum(1 for h in arr if h["metrics"].get("essence")) / len(arr)) if arr else 0
+    acts = [a for a in (state.get("actions") or []) if a.get("status") != "pending"]
+    done = sum(1 for a in acts if a.get("status") == "done")
+    return {
+        "sessions": state.get("sessions", 0),
+        "essence_rate": rate(lambda h: h["metrics"].get("essence")),
+        "counter_rate": rate(lambda h: h["metrics"].get("counter")),
+        "leap_rate": rate(lambda h: h["metrics"].get("leap")),
+        "avg_depth": (sum(h["metrics"].get("depth", 0) for h in H) / n) if n else None,
+        "exec_rate": (done / len(acts)) if acts else None,
+        "essence_early": round(er(early), 3), "essence_recent": round(er(recent), 3),
+    }
+
+
+@app.get("/admin/cohort")
+def cohort(x_admin_secret: str = Header(default="")):
+    secret = os.getenv("THINKOS_ADMIN_SECRET", "")
+    if not secret or x_admin_secret != secret:
+        raise HTTPException(403, "forbidden")
+    states = db.all_states()
+    per = [{"uid": s["uid"], "email": s["email"], "updated_at": s["updated_at"],
+            **_user_metrics(s["state"])} for s in states]
+    active = [p for p in per if (p["sessions"] or 0) > 0]
+
+    def avg(key):
+        vals = [p[key] for p in active if p.get(key) is not None]
+        return round(sum(vals) / len(vals), 3) if vals else None
+
+    improved = sum(1 for p in active if p["essence_recent"] > p["essence_early"])
+    return {
+        "users": len(per), "active": len(active),
+        "avg_sessions": avg("sessions"),
+        "avg_essence_rate": avg("essence_rate"), "avg_counter_rate": avg("counter_rate"),
+        "avg_leap_rate": avg("leap_rate"), "avg_exec_rate": avg("exec_rate"),
+        "essence_improved_users": improved,   # 본질 도달률이 오른 사용자 수 (검증 핵심)
+        "per_user": per,
+    }
 
 
 # --- 간단한 IP 레이트 리밋 (오픈 프록시 남용·쿼터 소진 방지) ---

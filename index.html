@@ -403,6 +403,9 @@
       <button data-tab="toolkit">도구</button>
     </nav>
     <div class="mast-util">
+      <button class="icon-btn" id="accountBtn" title="계정" aria-label="계정">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 19.5a7.5 7.5 0 0 1 15 0"/></svg>
+      </button>
       <button class="icon-btn" id="themeBtn" title="라이트 / 다크" aria-label="테마 전환">◐</button>
       <button class="icon-btn" id="settingsBtn" title="설정" aria-label="설정">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M19.2 4.8l-2.1 2.1M6.9 17.1l-2.1 2.1"/></svg>
@@ -522,6 +525,14 @@
     <div class="field">
       <button class="btn ghost wide sm" onclick="resetAll()">진행 상황 초기화</button>
     </div>
+  </div>
+</div>
+
+<!-- ACCOUNT / AUTH MODAL -->
+<div class="modal" id="authModal" role="dialog" aria-modal="true" aria-label="계정">
+  <div class="box" style="max-width:420px">
+    <button class="icon-btn close" onclick="closeAuth()">✕</button>
+    <div id="authBody"></div>
   </div>
 </div>
 
@@ -687,7 +698,7 @@ function load(){
   }catch(e){return structuredClone(DEFAULT)}
 }
 function pushWisdom(text,src){S.seq=(S.seq||0)+1;S.wisdom.unshift({id:S.seq,text,src,day:todayStr(),cases:[],revisions:[]});}
-function save(){localStorage.setItem('thinkos2',JSON.stringify(S))}
+function save(){localStorage.setItem('thinkos2',JSON.stringify(S));if(typeof scheduleSync==='function')scheduleSync();}
 function todayStr(){return new Date().toISOString().slice(0,10)}
 function dailyProblem(){const d=new Date();const seed=d.getFullYear()*1000+Math.floor((d-new Date(d.getFullYear(),0,0))/86400000);return PROBLEMS[seed%PROBLEMS.length]}
 
@@ -1585,6 +1596,92 @@ function finishOnboard(startNow){
   if(startNow)startQuick();
 }
 
+/* ============================================================
+   계정 (이메일+비밀번호) · 서버 저장 (멀티기기 동기화)
+============================================================ */
+let AUTH=loadAuth();
+function loadAuth(){try{return JSON.parse(localStorage.getItem('thinkos-auth'))||{}}catch(e){return{}}}
+function saveAuth(){localStorage.setItem('thinkos-auth',JSON.stringify(AUTH))}
+function authBase(){return curBackend();}                    // 백엔드 없으면 계정 불가
+const loggedIn=()=>!!(AUTH&&AUTH.token);
+
+document.getElementById('accountBtn').onclick=openAuth;
+function closeAuth(){document.getElementById('authModal').classList.remove('open')}
+document.getElementById('authModal').addEventListener('click',e=>{if(e.target.id==='authModal')closeAuth()});
+
+function openAuth(){renderAuth(loggedIn()?'account':'login');document.getElementById('authModal').classList.add('open')}
+function renderAuth(mode){
+  const b=document.getElementById('authBody');
+  if(!authBase()&&mode!=='account'){
+    b.innerHTML=`<p class="page-kicker">계정</p><h2 style="font-family:var(--serif);margin:0 0 8px">로그인은 서버에서</h2>
+      <p class="hint">이 앱을 <b>배포된 서버</b>(같은 주소)에서 열면 계정으로 로그인해 여러 기기에서 데이터를 동기화할 수 있습니다. 지금은 이 브라우저에만 저장됩니다.</p>`;
+    return;
+  }
+  if(mode==='account'){
+    b.innerHTML=`<p class="page-kicker">계정</p>
+      <h2 style="font-family:var(--serif);margin:0 0 6px">${AUTH.user&&AUTH.user.email||'로그인됨'}</h2>
+      <p class="hint" id="syncStatus">데이터가 이 계정에 동기화됩니다.</p>
+      <div class="field"><button class="btn ghost wide sm" onclick="doLogout()">로그아웃</button></div>`;
+    return;
+  }
+  const reg=mode==='register';
+  b.innerHTML=`<p class="page-kicker">${reg?'회원가입':'로그인'}</p>
+    <h2 style="font-family:var(--serif);margin:0 0 4px">${reg?'계정을 만들면 어디서나 이어집니다':'다시 오신 걸 환영합니다'}</h2>
+    <p class="hint" style="margin-bottom:14px">사고 데이터를 계정에 저장해 여러 기기에서 동기화합니다.</p>
+    ${reg?`<div class="field"><label>이름 (선택)</label><input id="auName" autocomplete="name" placeholder="재진"/></div>`:''}
+    <div class="field"><label>이메일</label><input id="auEmail" type="email" autocomplete="email" placeholder="you@example.com"/></div>
+    <div class="field"><label>비밀번호 <span style="text-transform:none;color:var(--muted2)">(6자 이상)</span></label><input id="auPw" type="password" autocomplete="${reg?'new-password':'current-password'}" placeholder="••••••••"/></div>
+    <div id="auErr" class="hint" style="color:var(--acc);min-height:16px"></div>
+    <div class="field"><button class="btn wide" id="auSubmit" onclick="doAuth('${reg?'register':'login'}')">${reg?'가입하고 시작':'로그인'}</button></div>
+    <p class="hint" style="text-align:center">${reg?'이미 계정이 있나요? ':'계정이 없나요? '}<a href="#" onclick="renderAuth('${reg?'login':'register'}');return false" style="color:var(--acc2)">${reg?'로그인':'회원가입'}</a></p>`;
+}
+async function doAuth(mode){
+  const base=authBase();if(!base)return;
+  const email=(document.getElementById('auEmail').value||'').trim();
+  const pw=document.getElementById('auPw').value||'';
+  const name=(document.getElementById('auName')?.value||'').trim();
+  const err=document.getElementById('auErr');const btn=document.getElementById('auSubmit');
+  if(!email||!pw){err.textContent='이메일과 비밀번호를 입력하세요.';return;}
+  btn.disabled=true;btn.textContent='처리 중...';
+  try{
+    const res=await fetch(base+'/auth/'+mode,{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify(mode==='register'?{email,password:pw,name}:{email,password:pw})});
+    if(!res.ok){const codes={400:'이메일/비밀번호를 확인하세요(6자 이상).',401:'이메일 또는 비밀번호가 틀렸습니다.',409:'이미 가입된 이메일입니다.'};
+      throw new Error(codes[res.status]||('오류 '+res.status));}
+    const j=await res.json();AUTH={token:j.token,user:j.user};saveAuth();
+    await syncPull(); updateAccountUI(); closeAuth();
+  }catch(e){err.textContent=e.message;}
+  finally{btn.disabled=false;}
+}
+function doLogout(){AUTH={};saveAuth();updateAccountUI();closeAuth();}
+function updateAccountUI(){
+  const btn=document.getElementById('accountBtn');
+  btn.style.color=loggedIn()?'var(--acc2)':'';
+  btn.title=loggedIn()?(AUTH.user&&AUTH.user.email||'계정'):'로그인';
+}
+
+/* ---- 서버 동기화 ---- */
+function stateForSync(){const {settings,...rest}=S;return rest;}   // 설정(키)은 동기화 제외
+async function syncPull(){
+  const base=authBase();if(!base||!loggedIn())return;
+  try{
+    const res=await fetch(base+'/me/state',{headers:{authorization:'Bearer '+AUTH.token}});
+    if(res.status===401){doLogout();return;}
+    if(!res.ok)return;
+    const {state}=await res.json();
+    if(state&&typeof state.sessions==='number'){                 // 서버 데이터가 있으면 계정 데이터로 전환
+      const keep=S.settings;localStorage.setItem('thinkos2',JSON.stringify(state));S=load();S.settings=keep;save();initAll();
+    }else{ await syncPush(); }                                    // 서버가 비었으면 로컬을 올림
+  }catch(e){/* 오프라인 → 로컬 유지 */}
+}
+let _syncT=null;
+function scheduleSync(){if(!loggedIn()||!authBase())return;clearTimeout(_syncT);_syncT=setTimeout(syncPush,1200);}
+async function syncPush(){
+  const base=authBase();if(!base||!loggedIn())return;
+  try{await fetch(base+'/me/state',{method:'PUT',headers:{'content-type':'application/json',authorization:'Bearer '+AUTH.token},
+    body:JSON.stringify({state:stateForSync()})});}catch(e){/* 오프라인 */}
+}
+
 /* ---------- 접근성: Esc로 모든 모달 닫기 ---------- */
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'));});
 
@@ -1600,6 +1697,8 @@ document.getElementById('themeBtn').onclick=()=>{
 /* ---------- INIT ---------- */
 function initAll(){renderHome();renderCoach();}
 initAll();
+updateAccountUI();
+if(loggedIn())syncPull();        // 로그인 상태면 서버에서 최신 데이터 가져오기(멀티기기)
 maybeOnboard();
 </script>
 </body>
