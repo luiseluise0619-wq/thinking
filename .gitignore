@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# THINK OS local DB
+backend/thinkos.db
+*.sqlite3
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
