@@ -67,9 +67,34 @@ async def analyze(body: AnalyzeIn):
     )
     if body.principle.strip():
         db.add_principle(body.user_id, body.principle.strip(), body.question)
+    # 실행 약속을 피드백 루프에 등록 (pending)
+    if body.action.strip():
+        db.add_action(body.user_id, body.question, body.action.strip())
 
     return AnalyzeOut(session_id=sid, surface=surface, critique=critique,
                       scores=ev["scores"], feedback=ev["feedback"], source=ev["source"])
+
+
+# --- Feedback loop: 실행 약속 조회 & 결과 회고(Reflection Agent) → 원칙 축적 ---
+@app.get("/actions/{user_id}")
+def list_actions(user_id: int, status: str | None = None):
+    return {"actions": db.actions(user_id, status)}
+
+
+@app.post("/actions/{action_id}/resolve")
+async def resolve_action(action_id: int, status: str, result: str = ""):
+    if status not in ("done", "skipped"):
+        raise HTTPException(400, "status must be 'done' or 'skipped'")
+    # Reflection Agent가 결과에서 '나만의 원칙' 한 줄을 추출
+    ref = await agents.run_agent(
+        "reflection", f"실행 상태: {status}\n결과: {result}")
+    lesson = ref["output"].splitlines()[0].strip("-• ").strip() if ref["output"] else ""
+    row = db.resolve_action(action_id, status, result, lesson)
+    if not row:
+        raise HTTPException(404, "action not found")
+    if lesson:
+        db.add_principle(row["user_id"], lesson, "🔁 " + (row.get("problem") or ""))
+    return {"action": row, "lesson": lesson, "source": ref["source"]}
 
 
 # --- 2. AI 코치: 소크라테스 / 논쟁 / 멀티에이전트 오케스트레이션 ---

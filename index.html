@@ -234,6 +234,24 @@
   .dna-empty{text-align:center;padding:38px 18px}
   .dna-empty .big{font-size:52px}
   .dna-note{font-size:12.5px;color:var(--muted2);margin-top:10px}
+
+  /* Feedback loop */
+  .feedback{border-color:#2a3a4a;background:linear-gradient(180deg,#141c22,#12141c);margin-bottom:18px}
+  .feedback .sec-title{color:var(--acc2)}
+  .fb-item{display:flex;gap:12px;align-items:center;background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+  .fb-item+.fb-item{margin-top:8px}
+  .fb-item .txt{flex:1;min-width:0}
+  .fb-item .txt b{font-size:14px}
+  .fb-item .txt small{display:block;color:var(--muted2);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fb-done{display:flex;gap:9px;align-items:center;font-size:13px;color:var(--good);font-weight:700;background:var(--bg2);border:1px solid var(--line);border-left:3px solid var(--good);border-radius:10px;padding:10px 13px}
+  .fb-done.skip{color:var(--warn);border-left-color:var(--warn)}
+  .seg{display:flex;gap:6px}
+  .seg button{background:var(--panel2);border:1px solid var(--line2);border-radius:9px;padding:10px 14px;font-weight:700;font-size:13px;transition:.15s}
+  .seg button.on-done{background:rgba(74,217,145,.15);border-color:var(--good);color:var(--good)}
+  .seg button.on-skip{background:rgba(255,122,107,.15);border-color:var(--warn);color:var(--warn)}
+  .suggest-box{margin-top:12px;background:#141c1a;border:1px solid #234;border-radius:10px;padding:12px 14px;font-size:13.5px}
+  .suggest-box b{color:var(--acc2)}
+  .suggest-box button{margin-top:8px;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;color:var(--acc2)}
 </style>
 </head>
 <body>
@@ -264,6 +282,7 @@
 
   <!-- HOME -->
   <section class="view active" id="view-home">
+    <div id="feedbackCard"></div>
     <div class="grid home-grid">
       <div class="card hero">
         <div class="kicker">오늘의 문제 · 하루 10분</div>
@@ -362,6 +381,27 @@
       </div>
     </div>
   </section>
+</div>
+
+<!-- FEEDBACK / 실행 회고 MODAL -->
+<div class="modal" id="feedbackModal">
+  <div class="box">
+    <button class="icon-btn close" onclick="closeFeedback()">✕</button>
+    <h2>🔁 실행 회고</h2>
+    <p class="hint">생각은 실행하고 <b>결과를 되먹여야</b> 성장한다. 이 한 바퀴가 THINK OS를 상담 앱이 아니라 성장 OS로 만든다.</p>
+    <p class="hint" id="fbProblem" style="margin-top:12px"></p>
+    <div class="field"><label>약속했던 행동</label>
+      <div id="fbAction" style="background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:12px;font-weight:700"></div></div>
+    <div class="field"><label>결과</label>
+      <div class="seg"><button id="fbDone" onclick="fbChoose('done')">✅ 실행했다</button>
+        <button id="fbSkip" onclick="fbChoose('skipped')">⤳ 못 했다</button></div></div>
+    <div class="field"><label>무슨 일이 있었나?</label>
+      <textarea id="fbResult" class="mini" placeholder="실제로 무엇을 확인했는지 / 왜 못 했는지"></textarea></div>
+    <div id="fbSuggest"></div>
+    <div class="field"><label>💎 여기서 얻은 원칙 <span style="text-transform:none;color:var(--muted2)">(지혜로 저장)</span></label>
+      <textarea id="fbLesson" class="mini" placeholder="예: 계획이 크면 실행이 죽는다 — 더 작게 쪼갠다"></textarea></div>
+    <button class="btn wide" onclick="saveFeedback()">기록하고 루프 닫기 🔁</button>
+  </div>
 </div>
 
 <!-- SETTINGS MODAL -->
@@ -495,13 +535,15 @@ const DEFAULT = {
   history:[],           // 세션별 능력치 스냅샷 (변화 추세)
   framedSessions:0,     // 문제 정의 단계를 채운 횟수
   actionSessions:0,     // 실행 계획을 남긴 횟수
+  actions:[],           // 실행 약속 → 결과 → 교훈 (피드백 루프)
+  seq:0,
   settings:{apiKey:'',model:'claude-sonnet-5'}
 };
 let S = load();
 function load(){
   try{const r=JSON.parse(localStorage.getItem('thinkos2'));
     return r?{...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},
-      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[]}:structuredClone(DEFAULT)}
+      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[]}:structuredClone(DEFAULT)}
   catch(e){return structuredClone(DEFAULT)}
 }
 function save(){localStorage.setItem('thinkos2',JSON.stringify(S))}
@@ -550,6 +592,7 @@ function renderHome(){
   document.getElementById('streak').textContent=S.streak;
   const c=currentLevel();document.getElementById('homeLvl').textContent=`Lv${c.n} ${c.name}`;
   drawRadar();
+  renderFeedback();
   const nx=nextLevel();
   if(nx){const span=nx.need-c.need,got=S.xp-c.need;
     document.getElementById('xpFill').style.width=Math.min(100,got/span*100)+'%';
@@ -558,6 +601,84 @@ function renderHome(){
   // pipeline diagram
   document.getElementById('pipeDiagram').innerHTML=FRAMEWORKS.map((f,i)=>
     `<span class="node"><b>${f.no}</b> ${f.name}</span>${i<FRAMEWORKS.length-1?'<span class="arw">→</span>':''}`).join('');
+}
+
+// ---------- Feedback loop (실행 약속 → 결과 → 교훈) ----------
+function renderFeedback(){
+  const el=document.getElementById('feedbackCard');
+  const pending=(S.actions||[]).filter(a=>a.status==='pending');
+  if(!pending.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="card feedback">
+    <p class="sec-title">🔁 피드백 루프 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 지난 훈련에서 약속한 행동의 결과를 기록하세요</span></p>
+    ${pending.map(a=>`<div class="fb-item">
+      <div class="txt"><b>${a.text}</b><small>${a.problem} · ${a.day}</small></div>
+      <button class="btn sm" onclick="openFeedback(${a.id})">결과 기록 →</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+let FB={id:null,status:null};
+function openFeedback(id){
+  const a=(S.actions||[]).find(x=>x.id===id);if(!a)return;
+  FB={id,status:null};
+  document.getElementById('fbProblem').textContent='🎯 '+a.problem;
+  document.getElementById('fbAction').textContent=a.text;
+  document.getElementById('fbResult').value='';
+  document.getElementById('fbLesson').value='';
+  document.getElementById('fbSuggest').innerHTML='';
+  document.getElementById('fbDone').className='';
+  document.getElementById('fbSkip').className='';
+  document.getElementById('feedbackModal').classList.add('open');
+}
+function closeFeedback(){document.getElementById('feedbackModal').classList.remove('open')}
+function fbChoose(status){
+  FB.status=status;
+  document.getElementById('fbDone').className=status==='done'?'on-done':'';
+  document.getElementById('fbSkip').className=status==='skipped'?'on-skip':'';
+  suggestReflection();
+}
+document.getElementById('feedbackModal').addEventListener('click',e=>{if(e.target.id==='feedbackModal')closeFeedback()});
+
+// Reflection Agent (규칙 기반 + 선택 AI)
+function reflectRule(status,result){
+  if(status==='done')
+    return result.trim()
+      ? `직접 확인해보니 얻은 것: 추측보다 실험이 빠르다 — "${result.trim().slice(0,40)}"에서 배운 것을 원칙으로.`
+      : `실행이 통찰을 만든다. 다음엔 결과를 더 구체적으로 기록하자.`;
+  return `실행을 막은 진짜 이유를 보라 — 계획이 너무 컸거나 우선순위가 낮았다. 더 작게 쪼개라.`;
+}
+async function suggestReflection(){
+  const box=document.getElementById('fbSuggest');
+  const result=document.getElementById('fbResult').value;
+  box.innerHTML=`<div class="suggest-box"><span class="thinking"><span class="d"></span> 교훈 추출 중...</span></div>`;
+  let lesson=reflectRule(FB.status,result);
+  if(hasAI()){
+    try{
+      const a=(S.actions||[]).find(x=>x.id===FB.id);
+      const sys='너는 THINK OS의 Reflection 코치다. 사용자의 실행 결과에서 다음에 쓸 수 있는 "나만의 원칙" 한 문장만 한국어로 뽑아라. 격려 금지, 구체적으로.';
+      lesson=await askClaude(sys,`문제: ${a.problem}\n행동: ${a.text}\n상태: ${FB.status}\n결과: ${result}`,{max_tokens:120});
+    }catch(e){/* keep rule-based */}
+  }
+  box.innerHTML=`<div class="suggest-box">💡 <b>교훈 제안:</b> ${lesson}
+    <div><button onclick="applyLesson()">이 원칙 적용 ↓</button></div></div>`;
+  box.dataset.lesson=lesson;
+}
+function applyLesson(){
+  const l=document.getElementById('fbSuggest').dataset.lesson||'';
+  document.getElementById('fbLesson').value=l;
+}
+function saveFeedback(){
+  if(!FB.status){alert('결과(실행했다 / 못 했다)를 먼저 선택하세요.');return;}
+  const a=(S.actions||[]).find(x=>x.id===FB.id);if(!a)return;
+  a.status=FB.status;
+  a.result=document.getElementById('fbResult').value.trim();
+  a.lesson=document.getElementById('fbLesson').value.trim();
+  // 실행 회고 → 능력치 되먹임
+  if(FB.status==='done'){S.stats.exec+=4;S.stats.meta+=2;S.stats.learning+=1;}
+  else{S.stats.meta+=2;}
+  if(a.lesson)S.wisdom.unshift({p:a.lesson,src:'🔁 '+a.problem,day:todayStr()});
+  save();closeFeedback();renderHome();
+  if(document.getElementById('view-dna').classList.contains('active'))renderDNA();
 }
 
 // ---------- Frameworks ----------
@@ -767,7 +888,11 @@ function rComplete(){
   // --- Thinking DNA: 사고 데이터 축적 ---
   if(R.fwId)S.fwCounts[R.fwId]=(S.fwCounts[R.fwId]||0)+1;
   if((R.frame||'').trim().length>5)S.framedSessions=(S.framedSessions||0)+1;
-  if((R.action||'').trim().length>1)S.actionSessions=(S.actionSessions||0)+1;
+  if((R.action||'').trim().length>1){
+    S.actionSessions=(S.actionSessions||0)+1;
+    S.seq=(S.seq||0)+1;
+    S.actions.unshift({id:S.seq,day,problem:R.problem,text:R.action.trim(),status:'pending',result:'',lesson:''});
+  }
   const gains=grantGains();S.xp+=gains.xp;
   S.history=S.history||[];
   S.history.push({day,n:S.sessions,stats:{...S.stats}});
@@ -866,7 +991,17 @@ function renderDNA(){
   weak.push({m:bottom.icon,t:`<b>${bottom.name}</b>이(가) 가장 낮은 축 — 여기에 훈련을 집중하면 성장 폭이 크다`});
   const thinkAxes=['essence','logic','analysis','creative','judge','meta'];
   const thinkAvg=thinkAxes.reduce((s,k)=>s+S.stats[k],0)/thinkAxes.length;
-  if(S.stats.exec<thinkAvg-6)weak.push({m:'🚀',t:'<b>실행력이 사고력보다 낮음</b> — 생각을 검증 행동으로 옮기는 습관이 부족'});
+  // 실행 완료율 — 피드백 루프에서 나온 실측 데이터 우선
+  const resolved=(S.actions||[]).filter(a=>a.status!=='pending');
+  const doneN=resolved.filter(a=>a.status==='done').length;
+  const compRate=resolved.length?doneN/resolved.length:null;
+  const pendN=(S.actions||[]).filter(a=>a.status==='pending').length;
+  if(compRate!==null){
+    if(compRate<0.5)weak.push({m:'🔁',t:`<b>실행 완료율 ${Math.round(compRate*100)}%</b> — 사고는 하지만 계획에서 멈추는 경향. 더 작게 쪼개라`});
+  }else if(S.stats.exec<thinkAvg-6){
+    weak.push({m:'🚀',t:'<b>실행력이 사고력보다 낮음</b> — 생각을 검증 행동으로 옮기는 습관이 부족'});
+  }
+  if(pendN>0)weak.push({m:'⏳',t:`<b>미확인 실행 약속 ${pendN}건</b> — 홈에서 결과를 기록해 루프를 닫아라`});
   const framedRate=(S.framedSessions||0)/N;
   if(framedRate<0.5)weak.push({m:'🎯',t:`<b>문제 정의를 자주 건너뜀</b> (${Math.round(framedRate*100)}%만 재정의) — 진짜 문제부터 세워라`});
   const total=Object.values(S.fwCounts||{}).reduce((a,b)=>a+b,0);
@@ -918,6 +1053,13 @@ function renderDNA(){
     <div class="card" style="margin-top:18px">
       <p class="sec-title">🧠 자주 사용하는 사고방식 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 사고의 편식을 드러낸다</span></p>
       <div class="freq">${freqHtml}</div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <p class="sec-title">🔁 실행 & 피드백 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 생각을 결과로 바꾸는 힘 (루프가 닫힌 횟수)</span></p>
+      <div class="freq">
+        <div class="row"><span class="fn">✅ 실행 완료율</span><span class="fb"><i style="width:${compRate!==null?Math.round(compRate*100):0}%"></i></span><span class="fp">${compRate!==null?Math.round(compRate*100)+'%':'—'}</span></div>
+      </div>
+      <p class="dna-note" style="margin-top:12px">실행 완료 <b>${doneN}</b> · 미확인 <b>${pendN}</b> · 회고에서 얻은 원칙 <b>${(S.wisdom||[]).filter(w=>String(w.src).startsWith('🔁')).length}</b></p>
     </div>
     <div class="card" style="margin-top:18px">
       <p class="sec-title">📈 능력치 변화 <span style="text-transform:none;font-weight:600;color:var(--muted2)">${period}</span></p>

@@ -61,6 +61,18 @@ CREATE TABLE IF NOT EXISTS principles (
     source TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Feedback loop: 실행 약속 → 결과 → 교훈 (성장 OS의 핵심 고리)
+CREATE TABLE IF NOT EXISTS actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    problem TEXT,
+    text TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',   -- pending | done | skipped
+    result TEXT,
+    lesson TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 
@@ -134,3 +146,28 @@ def knowledge(user_id: int) -> list[dict]:
     with conn() as c:
         return [dict(r) for r in c.execute(
             "SELECT * FROM knowledge_nodes WHERE user_id=? ORDER BY id DESC", (user_id,)).fetchall()]
+
+
+# ---- actions (feedback loop) ----
+def add_action(user_id: int, problem: str, text: str) -> int:
+    with conn() as c:
+        return c.execute("INSERT INTO actions (user_id, problem, text) VALUES (?,?,?)",
+                         (user_id, problem, text)).lastrowid
+
+
+def actions(user_id: int, status: str | None = None) -> list[dict]:
+    q = "SELECT * FROM actions WHERE user_id=?"
+    args: list = [user_id]
+    if status:
+        q += " AND status=?"
+        args.append(status)
+    with conn() as c:
+        return [dict(r) for r in c.execute(q + " ORDER BY id DESC", args).fetchall()]
+
+
+def resolve_action(action_id: int, status: str, result: str, lesson: str) -> dict | None:
+    with conn() as c:
+        c.execute("UPDATE actions SET status=?, result=?, lesson=? WHERE id=?",
+                  (status, result, lesson, action_id))
+        row = c.execute("SELECT * FROM actions WHERE id=?", (action_id,)).fetchone()
+    return dict(row) if row else None
