@@ -44,31 +44,37 @@
   :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:3px}
   @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
   input,textarea,select{font-family:inherit}
-  .app{max-width:1120px;margin:0 auto;padding:0 24px 120px;min-height:100%}
+  .app{max-width:1080px;margin:0 auto;padding:0 28px 128px;min-height:100%}
 
-  header.top{display:flex;align-items:center;justify-content:space-between;padding:22px 2px 16px;position:sticky;top:0;z-index:20;
+  /* Masthead */
+  .mast{display:flex;align-items:center;gap:28px;padding:20px 0 18px;margin-bottom:40px;position:sticky;top:0;z-index:30;
     background:var(--bg);border-bottom:1px solid var(--line)}
-  .brand{display:flex;align-items:center;gap:13px}
-  .logo{width:42px;height:42px;border-radius:var(--rs);background:var(--txt);color:var(--bg);
-    display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:23px;line-height:1}
-  .brand h1{font-family:var(--serif);font-size:21px;margin:0;letter-spacing:0;font-weight:700}
-  .brand h1 span{color:var(--muted);font-weight:400;font-style:italic}
-  .brand small{display:block;color:var(--muted2);font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
-  .top-right{display:flex;align-items:center;gap:12px}
-  .streak{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
-    padding:8px 12px;border-radius:var(--rs);font-family:var(--mono);font-size:12px;letter-spacing:.3px}
-  .streak b{color:var(--gold)}
-  .icon-btn{width:42px;height:42px;border-radius:var(--rs);background:var(--panel);border:1px solid var(--line);
-    display:grid;place-items:center;font-size:15px;transition:.15s;color:var(--muted)}
-  .icon-btn:hover{border-color:var(--line2);color:var(--txt)}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit;flex:none}
+  .logo{width:34px;height:34px;border-radius:var(--rs);background:var(--acc);color:#fff;
+    display:grid;place-items:center;font-family:var(--serif);font-weight:700;font-size:19px;line-height:1}
+  .wordmark{font-family:var(--serif);font-size:18px;font-weight:700;letter-spacing:.2px}
+  .wordmark span{color:var(--muted);font-weight:400;font-style:italic}
+  .mast-nav{display:flex;gap:4px;margin-right:auto}
+  .mast-nav button{padding:8px 13px;font-weight:500;font-size:14px;color:var(--muted);transition:.15s;border-radius:var(--rs);position:relative}
+  .mast-nav button.active{color:var(--txt);font-weight:600}
+  .mast-nav button.active:after{content:"";position:absolute;left:13px;right:13px;bottom:-19px;height:2px;background:var(--acc)}
+  .mast-nav button:not(.active):hover{color:var(--txt)}
+  .mast-util{display:flex;align-items:center;gap:8px;flex:none}
+  .icon-btn{width:38px;height:38px;border-radius:var(--rs);background:transparent;border:1px solid transparent;
+    display:grid;place-items:center;font-size:17px;transition:.15s;color:var(--muted)}
+  .icon-btn:hover{border-color:var(--line);color:var(--txt);background:var(--panel)}
+  @media(max-width:680px){.mast{flex-wrap:wrap;gap:14px}.mast-nav{order:3;width:100%;margin:0;overflow-x:auto}
+    .mast-nav button.active:after{bottom:-3px}}
 
-  nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:14px 0 26px;overflow-x:auto}
-  nav.tabs button{min-width:max-content;padding:12px 15px;font-weight:600;font-size:13.5px;color:var(--muted);
-    transition:.15s;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px}
-  nav.tabs button.active{color:var(--txt);border-bottom-color:var(--acc)}
-  nav.tabs button:not(.active):hover{color:var(--txt)}
+  /* Page heads (editorial) */
+  .page-kicker{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);margin:0 0 12px;display:flex;align-items:center;gap:10px}
+  .page-title{font-family:var(--serif);font-size:30px;font-weight:700;letter-spacing:-.4px;margin:0 0 12px;line-height:1.2}
+  .page-lede{color:var(--muted);font-size:15.5px;line-height:1.65;max-width:60ch;margin:0 0 26px}
+  .divider{height:1px;background:var(--line);border:0;margin:44px 0}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 0 18px;display:flex;align-items:baseline;gap:10px}
+  .eyebrow .num{color:var(--acc);font-weight:600}
 
-  .view{display:none;animation:fade .3s ease}
+  .view{display:none;animation:fade .35s ease}
   .view.active{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
@@ -304,156 +310,143 @@
   .suggest-box{margin-top:12px;background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--acc2);border-radius:var(--rs);padding:12px 14px;font-size:13.5px}
   .suggest-box b{color:var(--acc2)}
   .suggest-box button{margin-top:8px;background:var(--panel2);border:1px solid var(--line2);border-radius:var(--rs);padding:6px 11px;font-size:12px;font-weight:600;color:var(--acc2)}
+
+  /* 오늘 (Today) — signature hero */
+  .today{max-width:760px}
+  .today .kicker{font-family:var(--mono);font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);margin-bottom:22px;display:flex;align-items:center;gap:12px}
+  .today .kicker .dot{width:5px;height:5px;border-radius:50%;background:var(--acc)}
+  .today .q{font-family:var(--serif);font-size:clamp(30px,5.4vw,46px);font-weight:700;line-height:1.16;letter-spacing:-.6px;margin:0 0 20px;text-wrap:balance}
+  .today .why{color:var(--muted);font-size:16px;line-height:1.7;max-width:54ch;margin:0 0 34px}
+  .today .why b{color:var(--txt);font-weight:600}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .cta-row .mins{font-family:var(--mono);font-size:12px;color:var(--muted2);margin-left:4px}
+  .today .meta{display:flex;gap:0;margin-top:52px;border-top:1px solid var(--line);padding-top:22px}
+  .today .meta .mi{padding-right:32px;margin-right:32px;border-right:1px solid var(--line)}
+  .today .meta .mi:last-child{border-right:0}
+  .today .meta .mv{font-family:var(--serif);font-size:24px;font-weight:700;line-height:1}
+  .today .meta .mv small{font-family:var(--sans);font-size:13px;color:var(--muted);font-weight:400}
+  .today .meta .mk{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin-top:7px}
+  .today .quote{margin-top:44px;border-left:2px solid var(--acc);padding:2px 0 2px 18px}
+  .today .quote p{font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.55;margin:0;color:var(--txt)}
+  .today .quote cite{font-family:var(--mono);font-size:11px;color:var(--muted2);font-style:normal;display:block;margin-top:8px}
+  .today .biglink{margin-top:40px}
+  .today .biglink a{font-family:var(--sans);font-size:14px;color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line2);padding-bottom:2px;transition:.15s}
+  .today .biglink a:hover{color:var(--acc);border-color:var(--acc)}
+
+  /* 성장 (Profile) hero */
+  .prof-hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;margin-bottom:8px}
+  @media(max-width:760px){.prof-hero{grid-template-columns:1fr;gap:20px}}
+  .prof-hero .big{font-family:var(--serif);font-size:clamp(30px,5vw,42px);font-weight:700;line-height:1.15;letter-spacing:-.4px;margin:10px 0 14px}
+  .prof-hero .big b{color:var(--acc2)}
+  .radar-wrap{display:flex;flex-direction:column;align-items:center}
+  .section{margin-top:52px}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:22px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+  .section-head h3{font-family:var(--serif);font-size:20px;font-weight:600;margin:0}
+  .section-head .note{font-family:var(--mono);font-size:11px;color:var(--muted2);letter-spacing:.3px}
+  .cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:720px){.cols2{grid-template-columns:1fr}}
+
+  /* 도구 (Toolkit) list */
+  .tool-list{display:grid;gap:2px}
+  .tool-row{display:grid;grid-template-columns:44px 1fr auto;gap:18px;align-items:baseline;padding:18px 6px;border-bottom:1px solid var(--line);cursor:pointer;transition:.12s}
+  .tool-row:hover{background:var(--panel);padding-left:12px;padding-right:12px}
+  .tool-row .idx{font-family:var(--mono);font-size:13px;color:var(--acc);font-weight:600}
+  .tool-row h4{font-family:var(--serif);font-size:18px;font-weight:600;margin:0 0 4px}
+  .tool-row p{margin:0;color:var(--muted);font-size:14px;line-height:1.55}
+  .tool-row .use{font-family:var(--mono);font-size:11px;color:var(--muted2);text-align:right;white-space:nowrap}
+  .tool-row.key h4:after{content:"핵심";font-family:var(--mono);font-size:10px;color:var(--acc);border:1px solid var(--acc);border-radius:3px;padding:1px 5px;margin-left:9px;vertical-align:middle;font-weight:500}
+  .mmx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  @media(max-width:640px){.mmx-grid{grid-template-columns:1fr}}
+  .mmx{background:var(--panel);padding:17px 18px}
+  .mmx h5{font-family:var(--serif);font-size:15.5px;font-weight:600;margin:0 0 5px}
+  .mmx p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+  .mmx .trig{font-family:var(--mono);font-size:11px;color:var(--acc2);margin-top:8px}
+  .mm-cat{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:28px 0 12px}
+
+  .ob-steps{display:grid;gap:16px;margin:0 0 24px}
+  .ob-step{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+  .ob-step .ob-n{font-family:var(--mono);font-size:12px;color:var(--acc);font-weight:600;padding-top:2px}
+  .ob-step b{font-size:14.5px}
+  .ob-step p{margin:3px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
 </style>
 </head>
 <body>
 <div class="app">
-  <header class="top">
-    <div class="brand">
-      <div class="logo">T</div>
-      <div>
-        <small>사고 성장 운영체제</small>
-        <h1>THINK <span>OS</span></h1>
-      </div>
-    </div>
-    <div class="top-right">
-      <div class="streak"><span style="color:var(--muted2)">연속</span> <b id="streak">0</b>일</div>
-      <button class="icon-btn" id="themeBtn" title="라이트 / 다크" style="font-size:18px">◐</button>
+  <header class="mast">
+    <a class="brand" href="#" onclick="go('home');return false" aria-label="THINK OS 홈">
+      <span class="logo">T</span>
+      <span class="wordmark">THINK <span>OS</span></span>
+    </a>
+    <nav class="mast-nav" id="tabs">
+      <button data-tab="home" class="active">오늘</button>
+      <button data-tab="coach">코치</button>
+      <button data-tab="you">성장</button>
+      <button data-tab="toolkit">도구</button>
+    </nav>
+    <div class="mast-util">
+      <button class="icon-btn" id="themeBtn" title="라이트 / 다크" aria-label="테마 전환">◐</button>
       <button class="icon-btn" id="settingsBtn" title="설정" aria-label="설정">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M19.2 4.8l-2.1 2.1M6.9 17.1l-2.1 2.1"/></svg>
       </button>
     </div>
   </header>
 
-  <nav class="tabs" id="tabs">
-    <button data-tab="home" class="active">홈</button>
-    <button data-tab="routine">오늘의 훈련</button>
-    <button data-tab="frameworks">사고 프레임</button>
-    <button data-tab="models">멘탈 모델</button>
-    <button data-tab="coach">AI 코치</button>
-    <button data-tab="dna">Genome</button>
-    <button data-tab="growth">성장</button>
-  </nav>
-
-  <!-- HOME -->
+  <!-- 오늘 (TODAY) — 하나의 질문에 집중하는 히어로 -->
   <section class="view active" id="view-home">
     <div id="feedbackCard"></div>
-    <div class="grid home-grid">
-      <div class="card hero">
-        <div class="kicker">오늘의 문제 · 하루 10분</div>
-        <p class="q" id="homeProblem">—</p>
-        <p class="qsub">문제를 정의하고 → 본질을 파고, → 반박을 견디고, → 검증 행동으로 끝낸다.<br>AI는 답을 주지 않는다. 너의 사고 과정을 기록하고 키운다.</p>
-        <div class="flow-actions"><button class="btn" onclick="startQuick()">빠른 판단 · 5분</button><button class="btn ghost" onclick="go('routine')">깊은 훈련 →</button></div>
-      </div>
-      <div class="card radar-wrap">
-        <div class="lvlbadge">현재 · <b id="homeLvl">Lv1 정보 소비자</b></div>
-        <svg id="radar" width="230" height="200" viewBox="0 0 230 200"></svg>
-        <div class="xpbar"><i id="xpFill" style="width:0%"></i></div>
-        <div class="xphint" id="xpHint"></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:18px">
-      <p class="sec-title">성장 파이프라인 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 매일 이 순서로 사고 근육이 자란다</span></p>
-      <div class="pipe" id="pipeDiagram"></div>
-    </div>
-
-    <div class="card" style="margin-top:18px">
-      <p class="sec-title">THINK OS의 포지션</p>
-      <div class="pos-grid">
-        <div class="pos"><b>ChatGPT</b><small>답을 주는 AI</small></div>
-        <div class="pos"><b>Notion</b><small>기록 도구</small></div>
-        <div class="pos"><b>Duolingo</b><small>언어 근육</small></div>
-        <div class="pos me"><b>THINK OS</b><small>사고 근육</small></div>
-      </div>
-      <p class="footnote">AI 시대엔 답을 찾는 능력보다, 좋은 질문을 던지고 본질을 파악하는 능력이 중요하다.</p>
-    </div>
+    <div id="homeBody"></div>
   </section>
 
-  <!-- ROUTINE -->
+  <!-- 세션 (연습 흐름) -->
   <section class="view" id="view-routine">
-    <div class="flow card">
+    <div class="flow">
       <div class="steps" id="rSteps"></div>
       <div id="rBody"></div>
     </div>
   </section>
 
-  <!-- FRAMEWORKS -->
-  <section class="view" id="view-frameworks">
-    <p class="sec-title">사고 프레임 · 상황에 맞는 렌즈를 골라라 <span style="text-transform:none;font-weight:600;color:var(--gold)">★ = 파이프라인 핵심</span></p>
-    <div class="grid fw-grid" id="fwGrid"></div>
-  </section>
-
-  <!-- MENTAL MODELS -->
-  <section class="view" id="view-models">
-    <p class="sec-title">멘탈 모델 · 세상을 설명하는 원리들 <span style="text-transform:none;font-weight:600;color:var(--muted2)">"이 상황을 설명하는 가장 적합한 모델은?"</span></p>
-    <div id="mmContainer"></div>
-  </section>
-
-  <!-- COACH -->
+  <!-- 코치 -->
   <section class="view" id="view-coach">
     <div class="flow">
-      <div class="card">
-        <p class="sec-title">AI 사고 코치 <span class="badge-ai" id="coachAiBadge" style="display:none">REAL AI</span></p>
-        <p style="margin:0 0 4px;color:var(--muted);font-size:14px">고민을 입력하면 AI는 <b style="color:var(--warn)">바로 답을 주지 않는다.</b> 스스로 답에 도달하게 하는 질문을 던진다.</p>
-        <div class="mode-toggle" id="coachMode">
-          <button data-mode="socratic" class="active">🧭 소크라테스 (질문)</button>
-          <button data-mode="debate">⚔️ 논쟁 (반박)</button>
-        </div>
-        <div class="coach-in">
-          <input id="coachInput" placeholder="예: 퇴사할까? / 이 사업 시작할까? / AI가 의료를 혁신할 것이다" />
-          <button class="btn sm" id="coachBtn">코칭</button>
-        </div>
-        <div class="chips" id="coachChips"></div>
-        <div class="qlist" id="coachOut"></div>
+      <p class="page-kicker">AI 사고 코치 <span class="badge-ai" id="coachAiBadge" style="display:none">GEMINI</span></p>
+      <h2 class="page-title">답 대신, 더 나은 질문</h2>
+      <p class="page-lede">고민이나 주장을 적으면 AI는 <b>바로 답하지 않는다.</b> 스스로 답에 도달하도록 질문으로 파고든다.</p>
+      <div class="mode-toggle" id="coachMode">
+        <button data-mode="socratic" class="active">소크라테스 · 질문</button>
+        <button data-mode="debate">논쟁 · 반박</button>
       </div>
+      <div class="coach-in">
+        <input id="coachInput" placeholder="예: 퇴사할까? · 이 사업 시작할까? · AI가 의료를 혁신할 것이다" />
+        <button class="btn" id="coachBtn">코칭 받기</button>
+      </div>
+      <div class="chips" id="coachChips"></div>
+      <div class="qlist" id="coachOut"></div>
     </div>
   </section>
 
-  <!-- THINKING DNA -->
-  <section class="view" id="view-dna">
-    <div id="dnaBody"></div>
-  </section>
+  <!-- 성장 (Genome + 능력치 + 지혜) -->
+  <section class="view" id="view-you"><div id="youBody"></div></section>
 
-  <!-- GROWTH -->
-  <section class="view" id="view-growth">
-    <div class="grid" style="grid-template-columns:1fr;gap:18px">
-      <div class="card">
-        <p class="sec-title">능력치 <span style="text-transform:none;font-weight:600;color:var(--muted2)" id="growthSummary"></span></p>
-        <div class="stat-list" id="growthStats"></div>
-      </div>
-      <div class="card">
-        <p class="sec-title">성장 레벨</p>
-        <div class="levels" id="levelList"></div>
-      </div>
-      <div class="card">
-        <p class="sec-title">지혜 축적 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 경험에서 뽑아낸 나만의 원칙</span></p>
-        <div class="wisdom" id="wisdomList"></div>
-      </div>
-      <div class="card">
-        <p class="sec-title">성장 루프</p>
-        <div class="loop" id="loopDiagram"></div>
-      </div>
-    </div>
-  </section>
+  <!-- 도구 (프레임 + 멘탈 모델) -->
+  <section class="view" id="view-toolkit"><div id="toolBody"></div></section>
 </div>
 
 <!-- FEEDBACK / 실행 회고 MODAL -->
 <div class="modal" id="feedbackModal">
   <div class="box">
     <button class="icon-btn close" onclick="closeFeedback()">✕</button>
-    <h2>🔁 실행 회고</h2>
+    <h2 style="font-family:var(--serif)">실행 회고</h2>
     <p class="hint">생각은 실행하고 <b>결과를 되먹여야</b> 성장한다. 이 한 바퀴가 THINK OS를 상담 앱이 아니라 성장 OS로 만든다.</p>
     <p class="hint" id="fbProblem" style="margin-top:12px"></p>
     <div class="field"><label>약속했던 행동</label>
       <div id="fbAction" style="background:var(--bg2);border:1px solid var(--line2);border-radius:10px;padding:12px;font-weight:700"></div></div>
     <div class="field"><label>결과</label>
-      <div class="seg"><button id="fbDone" onclick="fbChoose('done')">✅ 실행했다</button>
-        <button id="fbSkip" onclick="fbChoose('skipped')">⤳ 못 했다</button></div></div>
+      <div class="seg"><button id="fbDone" onclick="fbChoose('done')">실행했다</button>
+        <button id="fbSkip" onclick="fbChoose('skipped')">못 했다</button></div></div>
     <div class="field"><label>무슨 일이 있었나?</label>
       <textarea id="fbResult" class="mini" placeholder="실제로 무엇을 확인했는지 / 왜 못 했는지"></textarea></div>
     <div id="fbSuggest"></div>
-    <div class="field"><label>💎 여기서 얻은 원칙 <span style="text-transform:none;color:var(--muted2)">(지혜로 저장)</span></label>
+    <div class="field"><label>여기서 얻은 원칙 <span style="text-transform:none;color:var(--muted2)">(지혜로 저장)</span></label>
       <textarea id="fbLesson" class="mini" placeholder="예: 계획이 크면 실행이 죽는다 — 더 작게 쪼갠다"></textarea></div>
     <button class="btn wide" onclick="saveFeedback()">기록하고 루프 닫기 🔁</button>
   </div>
@@ -461,17 +454,17 @@
 
 <!-- ONBOARDING MODAL (first run) -->
 <div class="modal" id="onboard">
-  <div class="box" style="max-width:480px;text-align:center">
-    <div style="font-size:44px">🧠</div>
-    <h2 style="margin:8px 0 4px">THINK OS에 온 걸 환영합니다</h2>
-    <p class="hint" style="font-size:14px;color:var(--muted)">AI가 답을 주는 앱이 아닙니다. 당신의 <b>사고 과정을 기록하고 키우는</b> 훈련 OS입니다.</p>
-    <div style="text-align:left;margin:18px 0;display:grid;gap:10px">
-      <div style="display:flex;gap:11px;align-items:center"><span style="font-size:20px">⚡</span><span style="font-size:14px"><b>하루 5분</b> — 오늘의 판단 하나에 날카로운 질문 하나</span></div>
-      <div style="display:flex;gap:11px;align-items:center"><span style="font-size:20px">🎯</span><span style="font-size:14px"><b>적응형 질문</b> — 배울 땐 구조부터, 주장할 땐 반증부터</span></div>
-      <div style="display:flex;gap:11px;align-items:center"><span style="font-size:20px">🧬</span><span style="font-size:14px"><b>Thinking Genome</b> — 사고 방식의 변화가 데이터로 쌓인다</span></div>
+  <div class="box" style="max-width:460px">
+    <p class="page-kicker" style="margin-bottom:10px">환영합니다</p>
+    <h2 style="font-family:var(--serif);font-size:25px;margin:0 0 10px;line-height:1.25">답을 주는 앱이 아닙니다.<br>사고를 벼리는 훈련장입니다.</h2>
+    <p class="hint" style="font-size:14px;color:var(--muted);margin-bottom:20px">ChatGPT는 답을, Notion은 기록을 줍니다. THINK OS는 매일 하나의 질문으로 <b>당신의 생각하는 힘</b>을 키웁니다.</p>
+    <div class="ob-steps">
+      <div class="ob-step"><span class="ob-n">01</span><div><b>매일 5–10분</b><p>오늘의 질문에 답하면, AI가 답 대신 당신의 사고를 반박합니다.</p></div></div>
+      <div class="ob-step"><span class="ob-n">02</span><div><b>사고 상태에 맞춘 질문</b><p>배울 땐 구조부터, 주장할 땐 반증부터 — 상황에 맞는 질문을 던집니다.</p></div></div>
+      <div class="ob-step"><span class="ob-n">03</span><div><b>Thinking Genome</b><p>사고 깊이·본질 도달률이 실제 데이터로 쌓여 당신만의 사고 프로필이 됩니다.</p></div></div>
     </div>
-    <button class="btn wide" onclick="finishOnboard(true)">⚡ 5분으로 시작하기</button>
-    <button class="btn ghost wide sm" style="margin-top:10px" onclick="finishOnboard(false)">둘러보기</button>
+    <button class="btn wide" onclick="finishOnboard(true)">지금 시작하기</button>
+    <button class="btn ghost wide sm" style="margin-top:10px" onclick="finishOnboard(false)">먼저 둘러보기</button>
   </div>
 </div>
 
@@ -679,11 +672,14 @@ function nextLevel(){const c=currentLevel();return LEVELS.find(l=>l.n===c.n+1)||
 
 // ---------- Nav ----------
 function go(tab){
-  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  const navTab=(tab==='routine')?'home':tab;
+  document.querySelectorAll('.mast-nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===navTab));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+tab));
+  if(tab==='home')renderHome();
   if(tab==='routine')renderRoutine();
-  if(tab==='dna')renderDNA();
-  if(tab==='growth')renderGrowth();
+  if(tab==='coach')renderCoach();
+  if(tab==='you')renderYou();
+  if(tab==='toolkit')renderToolkit();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(b.dataset.tab)});
@@ -691,7 +687,7 @@ document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.cl
 // ---------- Radar ----------
 function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888'}
 function drawRadar(){
-  const svg=document.getElementById('radar');const cx=115,cy=100,R=70,n=ABILITIES.length;
+  const svg=document.getElementById('radar');if(!svg)return;const cx=115,cy=100,R=70,n=ABILITIES.length;
   const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]};
   const cLine=cssVar('--line'),cAcc=cssVar('--acc2'),cMuted=cssVar('--muted2');
   let g='';
@@ -704,29 +700,32 @@ function drawRadar(){
   ABILITIES.forEach((a,i)=>{const[x,y]=pt(i,R+15);g+=`<text x="${x}" y="${y}" fill="${cMuted}" font-size="11" text-anchor="middle" dominant-baseline="middle">${a.icon}</text>`});
   svg.innerHTML=g;
 }
-function statBars(el){
-  const maxV=Math.max(30,...Object.values(S.stats));
-  el.innerHTML=ABILITIES.map(a=>`
-    <div class="stat-row"><span class="nm">${a.icon} ${a.name}</span>
-      <span class="bar"><i style="width:${Math.min(100,S.stats[a.key]/maxV*100)}%"></i></span>
-      <span class="vl">${S.stats[a.key]}</span></div>`).join('');
-}
 
-// ---------- Home ----------
+// ---------- 오늘 (Today) — 하나의 질문에 집중하는 히어로 ----------
 function renderHome(){
-  document.getElementById('homeProblem').textContent=dailyProblem();
-  document.getElementById('streak').textContent=S.streak;
-  const c=currentLevel();document.getElementById('homeLvl').textContent=`Lv${c.n} ${c.name}`;
-  drawRadar();
   renderFeedback();
-  const nx=nextLevel();
-  if(nx){const span=nx.need-c.need,got=S.xp-c.need;
-    document.getElementById('xpFill').style.width=Math.min(100,got/span*100)+'%';
-    document.getElementById('xpHint').textContent=`${S.xp} XP · 다음 레벨(${nx.name})까지 ${nx.need-S.xp} XP`;
-  }else{document.getElementById('xpFill').style.width='100%';document.getElementById('xpHint').textContent=`${S.xp} XP · 최고 레벨 도달 🏆`}
-  // pipeline diagram
-  document.getElementById('pipeDiagram').innerHTML=FRAMEWORKS.map((f,i)=>
-    `<span class="node"><b>${f.no}</b> ${f.name}</span>${i<FRAMEWORKS.length-1?'<span class="arw">→</span>':''}`).join('');
+  const c=currentLevel(), g=genome();
+  const depth=g.metrics.depth!=null?('Lv'+depthToLv(g.metrics.depth)):'—';
+  const w=(S.wisdom&&S.wisdom[0]);
+  document.getElementById('homeBody').innerHTML=`
+    <section class="today">
+      <div class="kicker"><span class="dot"></span> 오늘의 질문 · DAY ${S.sessions+1}</div>
+      <h1 class="q">${dailyProblem()}</h1>
+      <p class="why">답을 검색하지 마라. <b>더 깊이 생각하라.</b> AI는 답 대신 당신의 사고를 반박하고, 그 과정이 매일 데이터로 쌓여 당신만의 사고 유전자가 된다.</p>
+      <div class="cta-row">
+        <button class="btn" onclick="go('routine')">생각 시작</button>
+        <button class="btn ghost" onclick="startQuick()">빠른 판단</button>
+        <span class="mins">깊은 훈련 약 10분 · 빠른 판단 5분</span>
+      </div>
+      <div class="meta">
+        <div class="mi"><div class="mv">${S.streak}<small> 일</small></div><div class="mk">연속</div></div>
+        <div class="mi"><div class="mv">${S.sessions}<small> 회</small></div><div class="mk">누적 훈련</div></div>
+        <div class="mi"><div class="mv">${depth}</div><div class="mk">사고 깊이</div></div>
+        <div class="mi"><div class="mv">Lv${c.n}</div><div class="mk">${c.name}</div></div>
+      </div>
+      ${w?`<blockquote class="quote"><p>${w.text}</p><cite>내가 남긴 원칙 · ${w.day||''}</cite></blockquote>`:''}
+      <div class="biglink"><a href="#" onclick="go('you');return false">나의 사고 유전자 보기 →</a></div>
+    </section>`;
 }
 
 // ---------- Feedback loop (실행 약속 → 결과 → 교훈) ----------
@@ -747,7 +746,7 @@ let FB={id:null,status:null};
 function openFeedback(id){
   const a=(S.actions||[]).find(x=>x.id===id);if(!a)return;
   FB={id,status:null};
-  document.getElementById('fbProblem').textContent='🎯 '+a.problem;
+  document.getElementById('fbProblem').textContent=a.problem;
   document.getElementById('fbAction').textContent=a.text;
   document.getElementById('fbResult').value='';
   document.getElementById('fbLesson').value='';
@@ -788,7 +787,7 @@ async function suggestReflection(){
       lesson=await askClaude(sys,`문제: ${a.problem}\n행동: ${a.text}\n상태: ${FB.status}\n결과: ${result}`,{max_tokens:120});
     }catch(e){/* keep rule-based */}
   }
-  box.innerHTML=`<div class="suggest-box">💡 <b>교훈 제안:</b> ${lesson}
+  box.innerHTML=`<div class="suggest-box"><b>교훈 제안</b> · ${lesson}
     <div><button onclick="applyLesson()">이 원칙 적용 ↓</button></div></div>`;
   box.dataset.lesson=lesson;
 }
@@ -805,33 +804,34 @@ function saveFeedback(){
   // 실행 회고 → 능력치 되먹임
   if(FB.status==='done'){S.stats.exec+=4;S.stats.meta+=2;S.stats.learning+=1;}
   else{S.stats.meta+=2;}
-  if(a.lesson)pushWisdom(a.lesson,'🔁 '+a.problem);
+  if(a.lesson)pushWisdom(a.lesson,'실행 회고 · '+a.problem);
   save();closeFeedback();renderHome();
-  if(document.getElementById('view-dna').classList.contains('active'))renderDNA();
+  if(document.getElementById('view-you').classList.contains('active'))renderYou();
 }
 
-// ---------- Frameworks ----------
-function renderFrameworks(){
-  document.getElementById('fwGrid').innerHTML=FRAMEWORKS.map(f=>`
-    <div class="card fw ${f.key?'key':''}" onclick="openFw('${f.id}')">
-      <span class="emoji">${f.emoji}</span>
-      <div class="no">${f.no} ${f.key?'★ ':''}FRAME</div>
-      <h3>${f.name}</h3>
-      <p>${f.short}</p>
-      <div class="use">${f.use.map(u=>`<span class="tag">${u}</span>`).join('')}</div>
+// ---------- 도구 (Toolkit) — 사고 프레임 + 멘탈 모델 ----------
+function renderToolkit(){
+  const fw=FRAMEWORKS.map(f=>`
+    <div class="tool-row ${f.key?'key':''}">
+      <div class="idx">${f.no}</div>
+      <div><h4>${f.name}</h4><p>${f.lens}</p></div>
+      <div class="use">${f.use.join(' · ')}</div>
     </div>`).join('');
-}
-function openFw(id){const f=FRAMEWORKS.find(x=>x.id===id);alert(`${f.emoji} ${f.name}\n\n${f.lens}\n\n쓰는 곳: ${f.use.join(', ')}`)}
-
-// ---------- Mental Models ----------
-function renderModels(){
-  document.getElementById('mmContainer').innerHTML=MODELS.map(gr=>`
-    <div class="mm-group">
-      <p class="sec-title" style="margin:18px 0 12px;font-size:12px">${gr.group}</p>
-      <div class="grid mm-grid">
-        ${gr.items.map(m=>`<div class="mm"><h4>${m.e} ${m.n}</h4><p>${m.d}</p><div class="trig">💬 "${m.t}"</div></div>`).join('')}
-      </div>
-    </div>`).join('');
+  const mm=MODELS.map(gr=>`
+    <div class="mm-cat">${gr.group.replace(/^\S+\s/,'')}</div>
+    <div class="mmx-grid">${gr.items.map(m=>`<div class="mmx"><h5>${m.n}</h5><p>${m.d}</p><div class="trig">"${m.t}"</div></div>`).join('')}</div>`).join('');
+  document.getElementById('toolBody').innerHTML=`
+    <p class="page-kicker">도구함</p>
+    <h2 class="page-title">막히면 렌즈를 바꿔라</h2>
+    <p class="page-lede">같은 문제도 어떤 프레임으로 보느냐에 따라 답이 달라진다. 세션에서는 당신의 사고 상태에 맞춰 자동으로 추천된다.</p>
+    <div class="section">
+      <div class="section-head"><h3>사고 프레임</h3><span class="note">10가지 사고 렌즈</span></div>
+      <div class="tool-list">${fw}</div>
+    </div>
+    <div class="section">
+      <div class="section-head"><h3>멘탈 모델</h3><span class="note">세상을 설명하는 원리</span></div>
+      ${mm}
+    </div>`;
 }
 
 /* ============================================================
@@ -1307,123 +1307,150 @@ async function doCoach(){
    THINKING DNA — 사고 데이터를 성장 리포트로
    앱의 가장 큰 자산은 사용자의 사고 데이터다.
 ============================================================ */
-function renderDNA(){
-  const el=document.getElementById('dnaBody');
+// ---------- 성장 (Thinking Genome + 능력치 + 지혜) ----------
+function renderYou(){
+  const body=document.getElementById('youBody');
   const N=S.sessions||0;
   if(N===0){
-    el.innerHTML=`<div class="card dna-empty">
-      <div class="big">🧬</div>
-      <h2 style="margin:10px 0 6px">아직 사고 지문이 없습니다</h2>
-      <p style="color:var(--muted);margin:0">며칠간 훈련을 쌓으면, 당신이 <b>어떻게 생각하는 사람</b>인지가 데이터로 드러납니다.</p>
-      <div style="margin-top:18px"><button class="btn" onclick="go('routine')">첫 훈련 시작 →</button></div>
-    </div>`;
+    body.innerHTML=`
+      <div class="today" style="padding-top:36px">
+        <p class="page-kicker">Thinking Genome</p>
+        <h1 class="q" style="font-size:clamp(26px,4.6vw,40px)">아직 당신의 사고 지문이 없습니다</h1>
+        <p class="why">며칠만 훈련을 쌓으면, 당신이 <b>어떻게 생각하는 사람</b>인지 — 사고 깊이·본질 도달률·논리 견고성이 실제 데이터로 드러납니다.</p>
+        <div class="cta-row"><button class="btn" onclick="go('routine')">첫 훈련 시작</button></div>
+      </div>`;
     return;
   }
-  const fwMeta=Object.fromEntries(FRAMEWORKS.map(f=>[f.id,f]));
   const G=genome(), m=G.metrics;
   const pct=r=>r==null?'—':Math.round(r*100)+'%';
   const stars=n=>Array.from({length:5},(_,i)=>`<span class="${i<n?'on':'off'}">★</span>`).join('');
   const resolved=(S.actions||[]).filter(a=>a.status!=='pending');
   const pendN=(S.actions||[]).filter(a=>a.status==='pending').length;
   const W=S.wisdom||[];
-
-  // 강점 = 측정된 상위 성향
   const tr=G.traits.filter(t=>t.rate!=null).sort((a,b)=>b.rate-a.rate);
   const strengths=tr.slice(0,3);
 
-  // 약점 = 측정된 지표에서만 (분모 함께 노출)
   const weak=[];
-  if(m.essenceRate!=null&&m.essenceRate<0.5)weak.push({m:'🧩',t:`<b>본질 도달률 ${pct(m.essenceRate)}</b> — 표면에 머무는 경우가 많다. "왜?"를 두 층 더 내려가라`});
-  if(m.leapRate!=null&&m.leapRate>0.4)weak.push({m:'⚡',t:`<b>논리적 비약 ${pct(m.leapRate)}</b> — 근거 없이 결론으로 점프. 주장마다 사실 하나를 붙여라`});
-  if(m.counterRate!=null&&m.counterRate<0.4)weak.push({m:'🔍',t:`<b>반례 고려율 ${pct(m.counterRate)}</b> — 반대 증거를 잘 찾지 않는다. 역발상·확률 사고를 써라`});
-  if(m.execRate!=null&&m.execRate<0.5)weak.push({m:'🔁',t:`<b>실행 완료율 ${pct(m.execRate)}</b> — 계획에서 멈추는 경향. 더 작게 쪼개라`});
-  if(pendN>0)weak.push({m:'⏳',t:`<b>미확인 실행 약속 ${pendN}건</b> — 홈에서 결과를 기록해 루프를 닫아라`});
+  if(m.essenceRate!=null&&m.essenceRate<0.5)weak.push(`<b>본질 도달률 ${pct(m.essenceRate)}</b> — 표면에 머무는 경우가 많다. "왜?"를 두 층 더 내려가라`);
+  if(m.leapRate!=null&&m.leapRate>0.4)weak.push(`<b>논리적 비약 ${pct(m.leapRate)}</b> — 근거 없이 결론으로 점프. 주장마다 사실 하나를 붙여라`);
+  if(m.counterRate!=null&&m.counterRate<0.4)weak.push(`<b>반례 고려율 ${pct(m.counterRate)}</b> — 반대 증거를 잘 찾지 않는다. 역발상·확률 사고를 써라`);
+  if(m.execRate!=null&&m.execRate<0.5)weak.push(`<b>실행 완료율 ${pct(m.execRate)}</b> — 계획에서 멈추는 경향. 더 작게 쪼개라`);
+  if(pendN>0)weak.push(`<b>미확인 실행 약속 ${pendN}건</b> — 홈에서 결과를 기록해 루프를 닫아라`);
   const framedRate=(S.framedSessions||0)/N;
-  if(framedRate<0.5)weak.push({m:'🎯',t:`<b>문제 정의 생략 ${pct(1-framedRate)}</b> — 진짜 문제부터 세워라`});
-  if(!weak.length)weak.push({m:'✨',t:'뚜렷한 약점 신호가 없다. 난도를 높인 문제로 한계를 시험하라.'});
+  if(framedRate<0.5)weak.push(`<b>문제 정의 생략 ${pct(1-framedRate)}</b> — 진짜 문제부터 세워라`);
+  if(!weak.length)weak.push('뚜렷한 약점 신호가 없다. 난도를 높인 문제로 한계를 시험하라.');
 
-  // 자주 쓰는 사고방식
   const total=Object.values(S.fwCounts||{}).reduce((a,b)=>a+b,0);
+  const fwMeta=Object.fromEntries(FRAMEWORKS.map(f=>[f.id,f]));
   const fwSorted=Object.entries(S.fwCounts||{}).sort((a,b)=>b[1]-a[1]);
   const freqHtml=total?fwSorted.map(([id,c])=>{const f=fwMeta[id];const p=Math.round(c/total*100);
-      return `<div class="row"><span class="fn">${f.emoji} ${f.name}</span><span class="fb"><i style="width:${p}%"></i></span><span class="fp">${p}%</span></div>`}).join('')
+      return `<div class="row"><span class="fn">${f.name}</span><span class="fb"><i style="width:${p}%"></i></span><span class="fp">${p}%</span></div>`}).join('')
     :`<p style="color:var(--muted2);font-size:13px">사고 프레임을 선택한 훈련이 아직 없습니다.</p>`;
 
-  // 6대 신뢰 지표 (분모 노출 = 신뢰성)
   const denS=`${G.n}회`, denE=`${resolved.length}건`, denW=`${W.length}개`;
   const M6=[
-    {n:'🧩 본질 도달률',v:m.essenceRate,lbl:pct(m.essenceRate),den:denS,good:1},
-    {n:'🔍 반례 고려율',v:m.counterRate,lbl:pct(m.counterRate),den:denS,good:1},
-    {n:'⚡ 논리 견고성',v:m.leapRate==null?null:1-m.leapRate,lbl:m.leapRate==null?'—':pct(1-m.leapRate),den:denS,good:1},
-    {n:'🌀 사고 깊이',v:m.depth==null?null:m.depth/100,lbl:m.depth==null?'—':`Lv${depthToLv(m.depth)} (${m.depth})`,den:denS,good:1},
-    {n:'🔁 실행 완료율',v:m.execRate,lbl:m.execRate==null?'—':pct(m.execRate),den:denE,good:1},
-    {n:'💎 원칙 재사용률',v:m.reuseRate,lbl:m.reuseRate==null?'—':pct(m.reuseRate),den:denW,good:1},
+    {n:'본질 도달률',v:m.essenceRate,lbl:pct(m.essenceRate),den:denS},
+    {n:'반례 고려율',v:m.counterRate,lbl:pct(m.counterRate),den:denS},
+    {n:'논리 견고성',v:m.leapRate==null?null:1-m.leapRate,lbl:m.leapRate==null?'—':pct(1-m.leapRate),den:denS},
+    {n:'사고 깊이',v:m.depth==null?null:m.depth/100,lbl:m.depth==null?'—':`Lv${depthToLv(m.depth)} (${m.depth})`,den:denS},
+    {n:'실행 완료율',v:m.execRate,lbl:m.execRate==null?'—':pct(m.execRate),den:denE},
+    {n:'원칙 재사용률',v:m.reuseRate,lbl:m.reuseRate==null?'—':pct(m.reuseRate),den:denW},
   ];
   const m6Html=M6.map(x=>{const w=x.v==null?0:Math.round(x.v*100);
-    const col=x.v==null?'var(--line2)':x.v>=0.6?'var(--good)':x.v>=0.35?'var(--gold)':'var(--warn)';
+    const col=x.v==null?'var(--line2)':x.v>=0.6?'var(--good)':x.v>=0.35?'var(--gold)':'var(--acc)';
     return `<div class="m6"><span class="mn">${x.n}</span><span class="mb"><i style="width:${w}%;background:${col}"></i></span>
       <span class="mv">${x.lbl} <span class="den">/ ${x.den}</span></span></div>`}).join('');
 
-  // 능력치 변화 (부가)
-  const hist=S.history||[];let chgHtml='',period='';
+  const hist=S.history||[];let chgHtml='',period='2회 이상 훈련 시';
   if(hist.length>=2){
     const first=hist[0].stats,last=hist[hist.length-1].stats;
-    period=`${hist[0].day} → ${hist[hist.length-1].day} · ${hist.length}회`;
+    period=`${hist[0].day} → ${hist[hist.length-1].day}`;
     chgHtml=ABILITIES.map(a=>({a,f:first[a.key],t:last[a.key]})).filter(r=>r.f!=null&&r.t!=null)
       .map(r=>({...r,d:r.t-r.f})).sort((x,y)=>y.d-x.d)
       .map(r=>{const cls=r.d>0?'up':r.d<0?'dn':'flat';const sign=r.d>0?'+':'';
-        return `<div class="row"><span class="nm">${r.a.icon} ${r.a.name}</span><span class="fromto"><b>${r.f}</b> → <b>${r.t}</b></span><span class="delta ${cls}">${sign}${r.d}</span></div>`}).join('');
+        return `<div class="row"><span class="nm">${r.a.name}</span><span class="fromto"><b>${r.f}</b> → <b>${r.t}</b></span><span class="delta ${cls}">${sign}${r.d}</span></div>`}).join('');
   }else chgHtml=`<p style="color:var(--muted2);font-size:13px">변화 추세는 <b>2회 이상</b> 훈련하면 나타납니다.</p>`;
 
-  const summary=`${N}회의 훈련이 만든 당신의 <b>사고 지문</b>입니다. 평균 사고 깊이 <b>Lv${depthToLv(m.depth||0)}</b>, 본질 도달률 <b>${pct(m.essenceRate)}</b> — 아래 지표는 답변 길이가 아니라 <b>실제 사고 행동</b>에서 측정됩니다.`;
+  const c=currentLevel();
+  const levelsHtml=LEVELS.map(l=>`
+    <div class="lvl-row ${l.n===c.n?'cur':''}">
+      <div class="n">${l.n}</div>
+      <div class="t"><b>${l.name}</b><small>${l.desc}</small></div>
+      <div class="st">${l.n<c.n?'달성':l.n===c.n?'현재':`${l.need} XP`}</div></div>`).join('');
 
-  el.innerHTML=`
-    <div class="card dna-hero">
-      <div class="lab">🧬 THINKING GENOME</div>
-      <h2>${N}회 훈련으로 분석한 당신의 사고 유전자</h2>
-      <p class="dna-sum">${summary}</p>
-      ${hasAI()?`<div style="margin-top:14px"><button class="btn ghost sm" id="dnaAiBtn">🤖 AI 심층 총평 생성</button></div><div id="dnaAiOut"></div>`:''}
+  const wisHtml=W.length?W.map(x=>{
+    const cases=x.cases||[],revs=x.revisions||[];
+    return `<div class="wis">
+      <div class="p">${x.text}</div>
+      <div class="src">${x.src||'훈련'} · ${x.day||''}${cases.length?` · 적용 ${cases.length}`:''}${revs.length?` · 수정 ${revs.length}`:''}</div>
+      ${revs.length?`<div class="wis-hist">${revs.map(r=>`<div>↳ <s>${r.from}</s></div>`).join('')}</div>`:''}
+      ${cases.length?`<div class="wis-hist">${cases.map(cc=>`<div>· ${cc.note} <span style="color:var(--muted2)">${cc.day}</span></div>`).join('')}</div>`:''}
+      <div class="wis-act"><button onclick="wisdomCase(${x.id})">적용 사례 +</button><button onclick="wisdomRevise(${x.id})">재수정</button></div>
+    </div>`}).join('')
+    :`<div class="empty">아직 축적된 원칙이 없습니다.<br>훈련의 마지막 단계나 실행 회고에서 원칙을 남겨보세요.</div>`;
+
+  const summary=`답변 길이가 아니라 <b>실제 사고 행동</b>에서 측정한 결과입니다. 여기 쌓이는 데이터가 정교해질수록 코칭도 당신에게 맞춰집니다.`;
+
+  body.innerHTML=`
+    <p class="page-kicker">Thinking Genome · ${N}회 훈련</p>
+    <div class="prof-hero">
+      <div>
+        <h1 class="big">사고 깊이 <b>Lv${depthToLv(m.depth||0)}</b><br>본질 도달률 <b>${pct(m.essenceRate)}</b></h1>
+        <p class="page-lede" style="margin:0 0 16px">${summary}</p>
+        ${hasAI()?`<button class="btn ghost sm" id="dnaAiBtn">AI 심층 총평</button><div id="dnaAiOut"></div>`:''}
+      </div>
+      <div class="radar-wrap"><svg id="radar" width="230" height="200" viewBox="0 0 230 200"></svg></div>
     </div>
 
-    <div class="card" style="margin-top:18px">
-      <p class="sec-title">사고 성향 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 측정된 5개 축</span></p>
+    <div class="section">
+      <div class="section-head"><h3>사고 성향</h3><span class="note">측정된 5개 축</span></div>
       <div class="genome-traits">${G.traits.map(t=>`
         <div class="gt"><span class="gn">${t.name}</span><span class="stars">${stars(t.stars)}</span>
           <span class="gr">${t.rate==null?'데이터 부족':pct(t.rate)}</span></div>`).join('')}</div>
       <div class="genome-2">
         <div class="gbox"><div class="lb">의사결정 스타일</div>
           ${G.decision?`<div class="dstyle"><i class="an" style="width:${G.decision.analytic}%"></i><i class="it" style="width:${G.decision.intuitive}%"></i></div>
-            <div class="dstyle-lbl"><span style="color:var(--acc)">구조·데이터 ${G.decision.analytic}%</span><span style="color:var(--acc2)">발상·직관 ${G.decision.intuitive}%</span></div>`
+            <div class="dstyle-lbl"><span style="color:var(--acc2)">구조·데이터 ${G.decision.analytic}%</span><span style="color:var(--acc)">발상·직관 ${G.decision.intuitive}%</span></div>`
             :`<p style="color:var(--muted2);font-size:13px;margin:8px 0 0">프레임 사용 데이터가 쌓이면 나타납니다.</p>`}</div>
-        <div class="gbox"><div class="lb">평균 사고 깊이 · 본질 도달률 추이</div>
+        <div class="gbox"><div class="lb">사고 깊이 · 본질 도달률 추이</div>
           <div class="prog"><span class="a">Lv${depthToLv(G.progress.depthEarly)}</span><span class="ar">→</span><span class="b">Lv${depthToLv(G.progress.depthRecent)}</span></div>
-          <div class="prog" style="margin-top:6px"><span class="a">${Math.round(G.progress.essenceEarly*100)}%</span><span class="ar">→</span><span class="b" style="font-size:20px">${Math.round(G.progress.essenceRecent*100)}%</span> <span style="font-weight:600;color:var(--muted2);font-size:12px">본질 도달</span></div>
+          <div class="prog" style="margin-top:6px"><span class="a">${Math.round(G.progress.essenceEarly*100)}%</span><span class="ar">→</span><span class="b" style="font-size:20px">${Math.round(G.progress.essenceRecent*100)}%</span> <span style="font-weight:400;color:var(--muted2);font-size:12px;font-family:var(--sans)">본질 도달</span></div>
         </div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:18px">
-      <p class="sec-title">사고 신뢰 지표 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 답변 길이가 아닌 실제 사고에서 측정 (분모 표기)</span></p>
+    <div class="section">
+      <div class="section-head"><h3>신뢰 지표</h3><span class="note">실제 사고에서 측정 · 분모 표기</span></div>
       <div class="metrics6">${m6Html}</div>
     </div>
 
-    <div class="dna-cols">
-      <div class="card"><p class="sec-title" style="color:var(--good)">강점</p>
-        <div class="sw">${strengths.length?strengths.map(s=>`<div class="it good"><span class="m">★</span><span><b>${s.name}</b> · ${pct(s.rate)}</span></div>`).join(''):'<div class="empty" style="padding:12px">데이터를 더 모으면 강점이 드러납니다.</div>'}</div></div>
-      <div class="card"><p class="sec-title" style="color:var(--warn)">약점 & 사각지대</p>
-        <div class="sw">${weak.map(w=>`<div class="it bad"><span class="m">${w.m}</span><span>${w.t}</span></div>`).join('')}</div></div>
+    <div class="section cols2">
+      <div><div class="section-head" style="border:0;padding:0;margin-bottom:14px"><h3>강점</h3></div>
+        <div class="sw">${strengths.length?strengths.map(s=>`<div class="it good"><span class="m">★</span><span><b>${s.name}</b> · ${pct(s.rate)}</span></div>`).join(''):'<div class="empty" style="padding:12px">데이터를 더 모으면 드러납니다.</div>'}</div></div>
+      <div><div class="section-head" style="border:0;padding:0;margin-bottom:14px"><h3>사각지대</h3></div>
+        <div class="sw">${weak.map(w=>`<div class="it bad"><span class="m" style="color:var(--acc)">—</span><span>${w}</span></div>`).join('')}</div></div>
     </div>
 
-    <div class="card" style="margin-top:18px">
-      <p class="sec-title">자주 사용하는 사고방식 <span style="text-transform:none;font-weight:600;color:var(--muted2)">— 사고의 편식을 드러낸다</span></p>
+    <div class="section">
+      <div class="section-head"><h3>자주 쓰는 사고방식</h3><span class="note">사고의 편식</span></div>
       <div class="freq">${freqHtml}</div>
     </div>
-    <div class="card" style="margin-top:18px">
-      <p class="sec-title">능력치 변화 <span style="text-transform:none;font-weight:600;color:var(--muted2)">${period}</span></p>
+
+    <div class="section">
+      <div class="section-head"><h3>능력치 변화</h3><span class="note">${period}</span></div>
       <div class="chg">${chgHtml}</div>
     </div>
-    <p class="dna-note">이 지표들은 이 브라우저에만 쌓입니다. 실제 서비스에선 개인 사고 프로필로 축적되어 코칭 정확도가 계속 올라갑니다 — 이것이 THINK OS의 해자입니다.</p>`;
 
+    <div class="section">
+      <div class="section-head"><h3>축적된 원칙</h3><span class="note">경험에서 뽑아낸 나만의 규칙</span></div>
+      <div class="wisdom">${wisHtml}</div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>성장 레벨</h3><span class="note">누적 ${S.xp} XP</span></div>
+      <div class="levels">${levelsHtml}</div>
+    </div>`;
+  drawRadar();
   const aiBtn=document.getElementById('dnaAiBtn');
   if(aiBtn)aiBtn.onclick=()=>dnaAiSummary(G);
 }
@@ -1436,45 +1463,19 @@ async function dnaAiSummary(G){
     const usr=`총 ${G.n}회 훈련\n본질 도달률: ${p(m.essenceRate)}\n반례 고려율: ${p(m.counterRate)}\n논리적 비약: ${p(m.leapRate)}\n평균 사고 깊이: ${m.depth==null?'—':'Lv'+depthToLv(m.depth)}\n실행 완료율: ${p(m.execRate)}\n원칙 재사용률: ${p(m.reuseRate)}\n의사결정: 구조·데이터 ${G.decision?G.decision.analytic:'—'}% / 발상·직관 ${G.decision?G.decision.intuitive:'—'}%`;
     const txt=await askClaude(sys,usr,{max_tokens:400});
     out.innerHTML=`<div class="dna-sum" style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px">${txt.replace(/\n/g,'<br>')}</div>`;
-  }catch(e){out.innerHTML=`<p class="footnote">⚠️ AI 총평 생성 실패 — 위 측정 지표를 참고하세요.</p>`}
+  }catch(e){out.innerHTML=`<p class="footnote">AI 총평 생성 실패 — 위 측정 지표를 참고하세요.</p>`}
 }
 
-/* ============================================================
-   GROWTH
-============================================================ */
-function renderGrowth(){
-  statBars(document.getElementById('growthStats'));
-  document.getElementById('growthSummary').textContent=`— 누적 ${S.sessions}회 훈련 · ${S.xp} XP`;
-  const c=currentLevel();
-  document.getElementById('levelList').innerHTML=LEVELS.map(l=>`
-    <div class="lvl-row ${l.n===c.n?'cur':''}">
-      <div class="n">${l.n}</div>
-      <div class="t"><b>Lv${l.n} ${l.name}</b><small>${l.desc}</small></div>
-      <div class="st">${l.n<c.n?'✓ 달성':l.n===c.n?'현재':`${l.need} XP`}</div></div>`).join('');
-  const w=document.getElementById('wisdomList');
-  w.innerHTML=S.wisdom.length?S.wisdom.map(x=>{
-    const cases=x.cases||[],revs=x.revisions||[];
-    return `<div class="wis">
-      <div class="p">"${x.text}"</div>
-      <div class="src">← ${x.src||'훈련'} · ${x.day||''} ${cases.length?`· 적용 ${cases.length}`:''} ${revs.length?`· 수정 ${revs.length}`:''}</div>
-      ${revs.length?`<div class="wis-hist">${revs.map(r=>`<div>↳ <s>${r.from}</s></div>`).join('')}</div>`:''}
-      ${cases.length?`<div class="wis-hist">${cases.map(c=>`<div>· 적용: ${c.note} <span style="color:var(--muted2)">${c.day}</span></div>`).join('')}</div>`:''}
-      <div class="wis-act"><button onclick="wisdomCase(${x.id})">＋ 적용 사례</button><button onclick="wisdomRevise(${x.id})">✎ 재수정</button></div>
-    </div>`}).join('')
-    :`<div class="empty">아직 축적된 원칙이 없습니다.<br>훈련의 마지막 단계나 실행 회고에서 원칙을 남겨보세요.</div>`;
-  const loop=['경험','문제 정의','사고','AI 검증','실행','결과','피드백','더 나은 사고'];
-  document.getElementById('loopDiagram').innerHTML=loop.map((n,i)=>`<span class="n">${n}</span>${i<loop.length-1?'<span class="a">→</span>':'<span class="a">↺</span>'}`).join('');
-}
 // Wisdom Log 진화 — 원칙에 적용 사례를 쌓고, 검증되면 재수정한다 (원칙 재사용률의 근거)
 function wisdomCase(id){
   const w=S.wisdom.find(x=>x.id===id);if(!w)return;
   const note=prompt('이 원칙을 실제로 적용한 사례를 한 줄로:');
-  if(note&&note.trim()){(w.cases=w.cases||[]).push({note:note.trim(),day:todayStr()});save();renderGrowth();}
+  if(note&&note.trim()){(w.cases=w.cases||[]).push({note:note.trim(),day:todayStr()});save();renderYou();}
 }
 function wisdomRevise(id){
   const w=S.wisdom.find(x=>x.id===id);if(!w)return;
   const next=prompt('경험이 쌓여 원칙을 어떻게 다듬겠습니까? (새 버전)',w.text);
-  if(next&&next.trim()&&next.trim()!==w.text){(w.revisions=w.revisions||[]).push({from:w.text,day:todayStr()});w.text=next.trim();save();renderGrowth();}
+  if(next&&next.trim()&&next.trim()!==w.text){(w.revisions=w.revisions||[]).push({from:w.text,day:todayStr()});w.text=next.trim();save();renderYou();}
 }
 
 /* ============================================================
@@ -1543,7 +1544,7 @@ document.getElementById('themeBtn').onclick=()=>{
 };
 
 /* ---------- INIT ---------- */
-function initAll(){renderHome();renderFrameworks();renderModels();renderCoach();}
+function initAll(){renderHome();renderCoach();}
 initAll();
 maybeOnboard();
 </script>
