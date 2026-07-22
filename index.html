@@ -21,6 +21,8 @@
     color:var(--txt);-webkit-font-smoothing:antialiased;line-height:1.5;
   }
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  :focus-visible{outline:2px solid var(--acc2);outline-offset:2px;border-radius:6px}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
   input,textarea,select{font-family:inherit}
   .app{max-width:1180px;margin:0 auto;padding:0 20px 120px;min-height:100%}
 
@@ -133,6 +135,9 @@
   .lens button{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:9px 12px;font-weight:700;font-size:12.5px;transition:.15s}
   .lens button:hover{border-color:var(--acc)}
   .lens button.active{background:linear-gradient(135deg,var(--acc),#6a5bff);border-color:transparent;color:#fff}
+  .lens button.rec{border-color:var(--acc2);box-shadow:0 0 0 1px var(--acc2) inset}
+  .lens button.rec.active{box-shadow:none}
+  .rec-hint{background:#141c1a;border:1px solid #234;border-radius:10px;padding:10px 13px;font-size:13px;color:var(--muted);margin:0 0 12px}
   .lens-out{background:var(--bg2);border:1px dashed var(--line2);border-radius:12px;padding:16px;font-size:15px;color:var(--txt);min-height:54px}
   .lens-out .lq{font-weight:800;color:var(--acc2);margin-bottom:4px;font-size:13px;letter-spacing:.5px}
   .mm-suggest{margin-top:12px;background:#141c1a;border:1px solid #234;border-radius:10px;padding:12px 14px;font-size:13.5px}
@@ -433,6 +438,22 @@
   </div>
 </div>
 
+<!-- ONBOARDING MODAL (first run) -->
+<div class="modal" id="onboard">
+  <div class="box" style="max-width:480px;text-align:center">
+    <div style="font-size:44px">🧠</div>
+    <h2 style="margin:8px 0 4px">THINK OS에 온 걸 환영합니다</h2>
+    <p class="hint" style="font-size:14px;color:var(--muted)">AI가 답을 주는 앱이 아닙니다. 당신의 <b>사고 과정을 기록하고 키우는</b> 훈련 OS입니다.</p>
+    <div style="text-align:left;margin:18px 0;display:grid;gap:10px">
+      <div style="display:flex;gap:11px;align-items:center"><span style="font-size:20px">⚡</span><span style="font-size:14px"><b>하루 5분</b> — 오늘의 판단 하나에 날카로운 질문 하나</span></div>
+      <div style="display:flex;gap:11px;align-items:center"><span style="font-size:20px">🎯</span><span style="font-size:14px"><b>적응형 질문</b> — 배울 땐 구조부터, 주장할 땐 반증부터</span></div>
+      <div style="display:flex;gap:11px;align-items:center"><span style="font-size:20px">🧬</span><span style="font-size:14px"><b>Thinking Genome</b> — 사고 방식의 변화가 데이터로 쌓인다</span></div>
+    </div>
+    <button class="btn wide" onclick="finishOnboard(true)">⚡ 5분으로 시작하기</button>
+    <button class="btn ghost wide sm" style="margin-top:10px" onclick="finishOnboard(false)">둘러보기</button>
+  </div>
+</div>
+
 <!-- SETTINGS MODAL -->
 <div class="modal" id="settings">
   <div class="box">
@@ -454,7 +475,18 @@
     <div class="field">
       <button class="btn wide" onclick="saveSettings()">저장</button>
       <p class="hint">브라우저에서 직접 호출하므로 개인 실험용으로만 사용하세요. 실서비스는 백엔드 프록시가 필요합니다.</p>
-      <button class="btn ghost wide sm" style="margin-top:10px" onclick="resetAll()">진행 상황 초기화</button>
+    </div>
+    <div class="field">
+      <label>내 사고 데이터 <span style="text-transform:none;color:var(--muted2)">(백업 · 파일럿 제출)</span></label>
+      <p class="hint" style="margin-top:0">데이터는 이 브라우저에만 있습니다. 브라우저를 지우면 사라지니 <b>정기적으로 백업</b>하세요. 내보낸 파일이 곧 파일럿 제출물입니다.</p>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn ghost sm" style="flex:1" onclick="exportData()">⬇ 내보내기(JSON)</button>
+        <button class="btn ghost sm" style="flex:1" onclick="document.getElementById('importFile').click()">⬆ 가져오기</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importData(this.files[0])" />
+    </div>
+    <div class="field">
+      <button class="btn ghost wide sm" onclick="resetAll()">진행 상황 초기화</button>
     </div>
   </div>
 </div>
@@ -542,6 +574,7 @@ const MODELS = [
   ]},
 ];
 
+// 30일 파일럿이 반복되지 않도록 32개로 확장 (경제·심리·기술·사회·개인·일 전반)
 const PROBLEMS = [
   '왜 사람들은 명품을 살까?',
   'AI 시대에 대학은 여전히 필요한가?',
@@ -551,6 +584,30 @@ const PROBLEMS = [
   '왜 회의는 항상 길어질까?',
   '왜 병원 대기 시간은 늘 길까?',
   '왜 우리는 알면서도 미룰까?',
+  '왜 집값은 계속 오를까?',
+  '좋은 결정과 좋은 결과는 같은 것인가?',
+  '왜 사람들은 로또를 살까?',
+  '전문가의 예측은 왜 자주 틀릴까?',
+  '왜 조직은 커질수록 느려질까?',
+  '돈으로 행복을 살 수 있는가?',
+  '왜 나쁜 습관은 고치기 어려울까?',
+  '왜 대부분의 신제품은 실패할까?',
+  '운과 실력을 어떻게 구분하는가?',
+  '왜 사람들은 자기 생각과 반대되는 증거를 무시할까?',
+  '무료 서비스는 정말 무료인가?',
+  '왜 착한 사람이 손해를 볼 때가 많을까?',
+  '왜 우리는 남과 비교하며 불행해질까?',
+  '완벽주의는 도움이 되는가, 방해가 되는가?',
+  '왜 도시로 사람이 몰릴까?',
+  '왜 오래된 기업은 혁신에 실패할까?',
+  '동기부여는 왜 오래가지 못할까?',
+  '왜 사람들은 명백한 거짓말을 믿을까?',
+  '재능은 타고나는가, 만들어지는가?',
+  '왜 회사는 뛰어난 인재를 놓칠까?',
+  '왜 우리는 미래를 과소평가할까?',
+  '규칙이 많아지면 왜 더 무질서해질까?',
+  '왜 첫인상은 쉽게 바뀌지 않을까?',
+  '노력은 왜 항상 보상받지 못할까?',
 ];
 
 const COACH_EXAMPLES = ['퇴사할까?','이 사업 시작할까?','대학원 갈까?','AI가 의료를 혁신할 것이다','이 사람과 계속 만날까?'];
@@ -566,6 +623,7 @@ const DEFAULT = {
   actionSessions:0,     // 실행 계획을 남긴 횟수
   actions:[],           // 실행 약속 → 결과 → 교훈 (피드백 루프)
   seq:0,
+  onboarded:false,      // 첫 실행 안내 여부
   settings:{apiKey:'',model:'claude-sonnet-5'}
 };
 let S = load();
@@ -770,6 +828,12 @@ const STANCE={
   learn :{icon:'📖',label:'학습·탐색',plan:'구조부터 세운다'},
   decide:{icon:'🔀',label:'결정·고민',plan:'선택지·가역성을 본다'},
   assert:{icon:'⚔️',label:'주장·확신',plan:'반증부터 던진다'},
+};
+// 사고 상태별 추천 프레임 (렌즈 선택의 마찰을 줄인다)
+const FW_REC={
+  learn :['frame','first','model'],   // 배울 땐 구조·본질·원리
+  decide:['bayes','2nd','inv','8020'],// 결정 땐 확률·2차·역발상·핵심변수
+  assert:['why5','sys','bayes','inv'],// 주장 땐 인과·구조·반증·역발상
 };
 function thinkingStance(text, ctx){
   // 사용자 자신의 표현에서만 판단한다 (문제 프롬프트의 "…할까?"에 오염되지 않도록)
@@ -1053,9 +1117,12 @@ function stepView(){
         <button class="btn" style="flex:1" onclick="R.step=3;stepView()">사고 프레임으로 다시 →</button></div>`;
     runAttack();
   }else if(R.step===3){
+    const stance=thinkingStance(R.answer,R.problem);const rec=FW_REC[stance]||[];const st=STANCE[stance];
+    const recNames=rec.map(id=>{const f=FRAMEWORKS.find(x=>x.id===id);return `${f.emoji} ${f.name}`}).join(' · ');
     b.innerHTML=head(3)+`
       <p style="color:var(--muted);margin:0 0 4px">렌즈를 바꿔 같은 문제를 다시 보라.</p>
-      <div class="lens" id="lensBtns">${FRAMEWORKS.map(f=>`<button data-fw="${f.id}">${f.emoji} ${f.name}</button>`).join('')}</div>
+      <div class="rec-hint">🧭 지금 <b>${st.icon} ${st.label}</b> 상태엔 이 렌즈가 잘 맞습니다 — <b style="color:var(--acc2)">${recNames}</b></div>
+      <div class="lens" id="lensBtns">${FRAMEWORKS.map(f=>`<button data-fw="${f.id}" class="${rec.includes(f.id)?'rec':''}">${f.emoji} ${f.name}</button>`).join('')}</div>
       <div class="lens-out" id="lensOut"><span style="color:var(--muted2)">프레임을 선택하면 질문이 나타납니다.</span></div>
       <div id="mmSug"></div>
       <div class="flow-actions"><button class="btn ghost sm" onclick="R.step=2;stepView()">←</button><button class="btn" style="flex:1" onclick="R.step=4;stepView()">실행으로 →</button></div>`;
@@ -1380,9 +1447,47 @@ function saveSettings(){S.settings.apiKey=document.getElementById('apiKey').valu
 function resetAll(){if(confirm('모든 진행 상황·능력치·지혜를 초기화할까요?')){localStorage.removeItem('thinkos2');S=structuredClone(DEFAULT);save();initAll();closeSettings()}}
 M.addEventListener('click',e=>{if(e.target===M)closeSettings()});
 
+// 데이터 백업 — 파일럿의 30일치 사고 데이터를 지키고, 코호트 제출물로 쓴다
+function exportData(){
+  const payload={app:'thinkos',v:2,exportedAt:todayStr(),data:S};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=`thinkos-data-${todayStr()}.json`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function importData(file){
+  if(!file)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const p=JSON.parse(rd.result);
+      const d=(p&&p.data)?p.data:p;                 // {app,data} 또는 원본 S 둘 다 허용
+      if(!d||typeof d.sessions!=='number'||!d.stats)throw new Error('형식이 올바르지 않습니다');
+      if(!confirm(`가져오면 현재 데이터를 덮어씁니다. (불러올 세션 ${d.sessions}회) 계속할까요?`))return;
+      localStorage.setItem('thinkos2',JSON.stringify(d));
+      S=load();save();initAll();closeSettings();
+      alert('가져오기 완료 — 데이터를 복원했습니다.');
+    }catch(e){alert('가져오기 실패: '+e.message);}
+  };
+  rd.readAsText(file);
+  document.getElementById('importFile').value='';
+}
+
+/* ---------- 첫 실행 온보딩 ---------- */
+function maybeOnboard(){
+  if(S.onboarded||S.sessions>0)return;
+  document.getElementById('onboard').classList.add('open');
+}
+function finishOnboard(startNow){
+  S.onboarded=true;save();
+  document.getElementById('onboard').classList.remove('open');
+  if(startNow)startQuick();
+}
+
 /* ---------- INIT ---------- */
 function initAll(){renderHome();renderFrameworks();renderModels();renderCoach();}
 initAll();
+maybeOnboard();
 </script>
 </body>
 </html>
