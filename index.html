@@ -660,7 +660,7 @@ const COACH_EXAMPLES = ['퇴사할까?','이 사업 시작할까?','대학원 �
 // LLM 프로바이더 — Gemini 전용
 const PROVIDERS={
   gemini:{name:'Gemini', keyHint:'AIza...',
-    models:['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash'],
+    models:['gemini-flash-latest','gemini-flash-lite-latest','gemini-pro-latest'],
     getKey:'https://aistudio.google.com/apikey'},
 };
 
@@ -676,7 +676,7 @@ const DEFAULT = {
   actions:[],           // 실행 약속 → 결과 → 교훈 (피드백 루프)
   seq:0,
   onboarded:false,      // 첫 실행 안내 여부
-  settings:{provider:'gemini', keys:{gemini:''}, models:{gemini:'gemini-2.5-flash'}, backendUrl:''}
+  settings:{provider:'gemini', keys:{gemini:''}, models:{gemini:'gemini-flash-latest'}, backendUrl:''}
 };
 let S = load();
 function load(){
@@ -690,8 +690,8 @@ function load(){
     const st=s.settings;
     st.keys=(st.keys&&typeof st.keys==='object')?st.keys:{gemini:''};
     if(!st.keys.gemini)st.keys.gemini='';
-    st.models=(st.models&&typeof st.models==='object')?st.models:{gemini:'gemini-2.5-flash'};
-    if(!st.models.gemini)st.models.gemini='gemini-2.5-flash';
+    st.models=(st.models&&typeof st.models==='object')?st.models:{gemini:'gemini-flash-latest'};
+    if(!st.models.gemini)st.models.gemini='gemini-flash-latest';
     st.provider='gemini';
     delete st.apiKey;delete st.model;
     return s;
