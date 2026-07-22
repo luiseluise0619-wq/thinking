@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>THINK OS · 30일 사고력 파일럿 초대</title>
+</head>
+<body>
+<style>
+  :root{
+    --bg:#0a0b0f; --bg2:#12141c; --panel:#161925; --panel2:#1c2030;
+    --line:#262b3d; --line2:#333a52; --txt:#e8ebf5; --muted:#8b93ad; --muted2:#5f6782;
+    --acc:#7c6cff; --acc2:#00e0c7; --gold:#ffcf6b; --good:#4ad991;
+    --f:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--f);line-height:1.6;color:var(--txt);
+    background:radial-gradient(1100px 560px at 82% -12%,#1a1730 0%,transparent 55%),
+      radial-gradient(820px 460px at -8% 8%,#0d1a24 0%,transparent 50%),var(--bg);
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:780px;margin:0 auto;padding:0 22px 96px}
+  .kicker{display:inline-flex;align-items:center;gap:8px;margin:52px 0 0;background:var(--panel);border:1px solid var(--line2);
+    padding:8px 15px;border-radius:999px;font-size:12.5px;font-weight:700;letter-spacing:1px;color:var(--acc2)}
+  h1{font-size:clamp(30px,6vw,46px);font-weight:800;letter-spacing:-.8px;line-height:1.15;margin:22px 0 14px;text-wrap:balance}
+  h1 .g{background:linear-gradient(120deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{font-size:clamp(16px,2.4vw,19px);color:var(--muted);max-width:60ch;margin:0}
+  .cta{display:inline-flex;align-items:center;gap:9px;margin-top:26px;background:linear-gradient(135deg,var(--acc),#6a5bff);
+    color:#fff;font-weight:800;padding:15px 26px;border-radius:13px;font-size:16px;text-decoration:none;
+    box-shadow:0 14px 34px -14px var(--acc)}
+  .note{color:var(--muted2);font-size:13px;margin-top:12px}
+
+  section{margin-top:46px}
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:2px;color:var(--acc2);text-transform:uppercase;margin:0 0 14px}
+  h2{font-size:23px;font-weight:800;margin:0 0 12px;letter-spacing:-.3px}
+  p.body{color:var(--muted);margin:0 0 12px}
+  b{color:var(--txt)}
+
+  .loop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}
+  .loop .n{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 13px;font-size:13px;font-weight:700}
+  .loop .a{color:var(--acc2);font-weight:900}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+  @media(max-width:620px){.cards{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:15px;padding:20px}
+  .card .ic{font-size:24px}
+  .card h3{margin:10px 0 6px;font-size:16px;font-weight:800}
+  .card p{margin:0;color:var(--muted);font-size:13.5px}
+
+  .steps{display:grid;gap:10px;margin-top:6px}
+  .step{display:flex;gap:14px;align-items:flex-start;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .step .num{width:30px;height:30px;flex:none;border-radius:9px;background:var(--panel2);border:1px solid var(--line2);
+    display:grid;place-items:center;font-weight:800;color:var(--acc2);font-size:14px}
+  .step b{display:block;font-size:14.5px}
+  .step small{color:var(--muted);font-size:13px}
+
+  .metrics{display:grid;gap:9px;margin-top:6px}
+  .metric{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--line);border-radius:11px;padding:12px 15px}
+  .metric .mi{font-size:17px}
+  .metric .mt{flex:1;font-weight:700;font-size:14px}
+  .metric .mv{font-weight:800;color:var(--good);font-size:13.5px;font-variant-numeric:tabular-nums}
+
+  .req{display:grid;gap:8px;margin-top:6px}
+  .req div{display:flex;gap:10px;align-items:flex-start;font-size:14.5px}
+  .req .c{color:var(--acc2);font-weight:900}
+
+  .final{margin-top:48px;background:linear-gradient(135deg,#1a1730,#12141c);border:1px solid var(--line2);border-radius:18px;padding:30px 26px;text-align:center}
+  .final h2{font-size:22px}
+  .final p{color:var(--muted);max-width:52ch;margin:0 auto 4px}
+  footer{margin-top:40px;color:var(--muted2);font-size:12.5px;text-align:center;border-top:1px solid var(--line);padding-top:20px}
+</style>
+
+<div class="wrap">
+  <div class="kicker">🧠 THINK OS · 30일 클로즈드 파일럿</div>
+  <h1>답을 찾는 능력보다,<br><span class="g">좋은 질문을 던지는 능력.</span></h1>
+  <p class="lede">THINK OS는 답을 주는 앱이 아닙니다. 매일 당신의 사고 과정을 기록하고, 반박하고,
+  실행으로 연결해 <b>사고 근육</b>을 키우는 훈련 OS입니다. 30일 동안 함께 검증해 줄 <b>5~10명</b>을 찾습니다.</p>
+  <a class="cta" href="#join">참여 조건 보기 ↓</a>
+  <div class="note">하루 5분. 30일. 당신이 어떻게 생각하는 사람인지 데이터로 드러납니다.</div>
+
+  <section>
+    <p class="eyebrow">왜 지금인가</p>
+    <h2>AI가 답을 다 주는 시대의 진짜 능력</h2>
+    <p class="body">검색과 챗봇이 답을 대신 내주는 지금, 희소해지는 건 <b>문제를 정의하고 본질을 파악하는 힘</b>입니다.
+    THINK OS는 이 능력을 근육처럼 훈련합니다 — 듀오링고가 언어를, 이 앱은 <b>사고</b>를.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">작동 원리</p>
+    <h2>하나의 성장 루프</h2>
+    <div class="loop">
+      <span class="n">문제 정의</span><span class="a">→</span>
+      <span class="n">내 생각</span><span class="a">→</span>
+      <span class="n">AI 반박</span><span class="a">→</span>
+      <span class="n">실행</span><span class="a">→</span>
+      <span class="n">결과 기록</span><span class="a">→</span>
+      <span class="n">원칙 축적</span><span class="a">↺</span>
+    </div>
+    <div class="cards" style="margin-top:16px">
+      <div class="card"><div class="ic">🎯</div><h3>적응형 질문</h3><p>당신의 사고 상태를 감지해, 배울 땐 구조부터·결정할 땐 가역성·주장할 땐 반증부터 묻습니다.</p></div>
+      <div class="card"><div class="ic">🔁</div><h3>닫힌 피드백</h3><p>실행을 약속하면 다음에 결과를 되묻습니다. 생각만 깊어지는 걸 막습니다.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">매일 하는 것</p>
+    <h2>하루 5분이면 충분</h2>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div><b>오늘 가장 중요한 판단 하나</b><small>머릿속에 걸린 결정을 적습니다.</small></div></div>
+      <div class="step"><div class="num">2</div><div><b>AI가 딱 하나 되묻는다</b><small>칭찬 없이, 사고의 허점을 정확히 찌르는 질문 하나.</small></div></div>
+      <div class="step"><div class="num">3</div><div><b>그래서 오늘 무엇을?</b><small>가장 작은 검증 행동 하나로 마무리. 깊은 훈련은 주 2회 선택.</small></div></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">30일 후 받는 것</p>
+    <h2>당신의 Thinking Genome</h2>
+    <p class="body">답변 길이가 아니라 <b>실제 사고 행동</b>에서 측정한 성장 리포트. 30일 전과 후가 이렇게 바뀝니다:</p>
+    <div class="metrics">
+      <div class="metric"><span class="mi">🧩</span><span class="mt">본질 도달률</span><span class="mv">34% → 81%</span></div>
+      <div class="metric"><span class="mi">🌀</span><span class="mt">평균 사고 깊이</span><span class="mv">Lv2 → Lv4</span></div>
+      <div class="metric"><span class="mi">🔍</span><span class="mt">반례 고려율</span><span class="mv">▲ 상승</span></div>
+      <div class="metric"><span class="mi">🚀</span><span class="mt">실행 완료율</span><span class="mv">측정·추적</span></div>
+    </div>
+    <p class="note">예시 수치입니다. 실제 값은 당신의 30일이 만듭니다.</p>
+  </section>
+
+  <section id="join">
+    <p class="eyebrow">참여 조건</p>
+    <h2>이런 분을 찾습니다</h2>
+    <div class="req">
+      <div><span class="c">✔</span><span>사고력·판단력을 진짜 키우고 싶은 분</span></div>
+      <div><span class="c">✔</span><span>매일 <b>5분</b>을 낼 수 있는 분 (완벽함보다 꾸준함)</span></div>
+      <div><span class="c">✔</span><span>30일 완주 + 주 1회 짧은 피드백에 응해줄 분</span></div>
+      <div><span class="c">✔</span><span>직군 다양성 환영 — 창업·기획·개발·연구·학생 누구든</span></div>
+    </div>
+  </section>
+
+  <div class="final">
+    <h2>30일 뒤, 당신의 사고가 실제로 바뀌었는지 함께 확인합니다.</h2>
+    <p>이건 앱 테스트가 아니라, "AI 시대에 인간의 사고력은 훈련으로 성장하는가"라는 질문의 검증입니다.</p>
+    <a class="cta" href="#" onclick="return false">파일럿 신청하기</a>
+    <div class="note">신청 링크·문의 채널은 운영자가 이 자리에 연결합니다.</div>
+  </div>
+
+  <footer>THINK OS — 사고 성장 운영체제 · 개인 사고 데이터는 익명 ID로만 취합되며 원문은 참가자 소유입니다.</footer>
+</div>
+
+</body>
+</html>

@@ -15,6 +15,7 @@
 | **② 백엔드 MVP** | [`backend/`](backend/) | FastAPI + AI Agent Orchestrator + Evaluation Engine + SQLite |
 | **③ 시스템 설계** | [`ARCHITECTURE.md`](ARCHITECTURE.md) | 전체 아키텍처·에이전트·메모리·데이터 플라이휠·MVP 로드맵 |
 | **④ 북극성 비전** | [`HUMAN_OS.md`](HUMAN_OS.md) | HUMAN OS 성장 모델 · 7대 영역 매핑 · 검증 지표 (구현 vs 로드맵) |
+| **⑤ 검증 계획** | [`PILOT.md`](PILOT.md) · [`docs/pilot-invite.html`](docs/pilot-invite.html) | 30일 파일럿 — 가설·성공 지표·Go/Kill 게이트 + 참가자 모집 1페이지 |
 
 두 구현 모두 **Claude API 키가 없어도 규칙 기반 엔진으로 완전히 동작**한다.
 키를 넣으면 진짜 추론으로 업그레이드된다.
