@@ -1412,6 +1412,7 @@ function renderYou(){
     return;
   }
   const G=genome(), m=G.metrics;
+  const prov=G.n<3;                                   // 표본 3회 미만 = 잠정치(과신 방지)
   const pct=r=>r==null?'—':Math.round(r*100)+'%';
   const stars=n=>Array.from({length:5},(_,i)=>`<span class="${i<n?'on':'off'}">★</span>`).join('');
   const resolved=(S.actions||[]).filter(a=>a.status!=='pending');
@@ -1438,18 +1439,19 @@ function renderYou(){
     :`<p style="color:var(--muted2);font-size:13px">사고 프레임을 선택한 훈련이 아직 없습니다.</p>`;
 
   const denS=`${G.n}회`, denE=`${resolved.length}건`, denW=`${W.length}개`;
-  const M6=[
-    {n:'본질 도달률',v:m.essenceRate,lbl:pct(m.essenceRate),den:denS},
-    {n:'반례 고려율',v:m.counterRate,lbl:pct(m.counterRate),den:denS},
-    {n:'논리 견고성',v:m.leapRate==null?null:1-m.leapRate,lbl:m.leapRate==null?'—':pct(1-m.leapRate),den:denS},
-    {n:'사고 깊이',v:m.depth==null?null:m.depth/100,lbl:m.depth==null?'—':`Lv${depthToLv(m.depth)} (${m.depth})`,den:denS},
-    {n:'실행 완료율',v:m.execRate,lbl:m.execRate==null?'—':pct(m.execRate),den:denE},
-    {n:'원칙 재사용률',v:m.reuseRate,lbl:m.reuseRate==null?'—':pct(m.reuseRate),den:denW},
+  const M6=[   // low: 각 지표의 실제 표본이 3 미만이면 잠정
+    {n:'본질 도달률',v:m.essenceRate,lbl:pct(m.essenceRate),den:denS,low:G.n<3},
+    {n:'반례 고려율',v:m.counterRate,lbl:pct(m.counterRate),den:denS,low:G.n<3},
+    {n:'논리 견고성',v:m.leapRate==null?null:1-m.leapRate,lbl:m.leapRate==null?'—':pct(1-m.leapRate),den:denS,low:G.n<3},
+    {n:'사고 깊이',v:m.depth==null?null:m.depth/100,lbl:m.depth==null?'—':`Lv${depthToLv(m.depth)} (${m.depth})`,den:denS,low:G.n<3},
+    {n:'실행 완료율',v:m.execRate,lbl:m.execRate==null?'—':pct(m.execRate),den:denE,low:resolved.length<3},
+    {n:'원칙 재사용률',v:m.reuseRate,lbl:m.reuseRate==null?'—':pct(m.reuseRate),den:denW,low:W.length<3},
   ];
   const m6Html=M6.map(x=>{const w=x.v==null?0:Math.round(x.v*100);
     const col=x.v==null?'var(--line2)':x.v>=0.6?'var(--good)':x.v>=0.35?'var(--gold)':'var(--acc)';
+    const tag=(x.v!=null&&x.low)?' <span class="den" style="color:var(--gold)">· 잠정</span>':'';
     return `<div class="m6"><span class="mn">${x.n}</span><span class="mb"><i style="width:${w}%;background:${col}"></i></span>
-      <span class="mv">${x.lbl} <span class="den">/ ${x.den}</span></span></div>`}).join('');
+      <span class="mv">${x.lbl} <span class="den">/ ${x.den}</span>${tag}</span></div>`}).join('');
 
   const hist=S.history||[];let chgHtml='',period='2회 이상 훈련 시';
   if(hist.length>=2){
@@ -1485,7 +1487,8 @@ function renderYou(){
     <p class="page-kicker">Thinking Genome · ${N}회 훈련</p>
     <div class="prof-hero">
       <div>
-        <h1 class="big">사고 깊이 <b>Lv${depthToLv(m.depth||0)}</b><br>본질 도달률 <b>${pct(m.essenceRate)}</b></h1>
+        <h1 class="big">사고 깊이 <b>Lv${depthToLv(m.depth||0)}</b><br>본질 도달률 <b>${pct(m.essenceRate)}</b>${prov?' <span style="font-size:14px;font-weight:600;color:var(--gold);font-family:var(--sans);vertical-align:middle">잠정</span>':''}</h1>
+        ${prov?`<p class="why" style="margin:0 0 12px;color:var(--gold)">아직 표본이 적어 잠정 수치입니다 — <b>3회 이상</b> 쌓이면 안정됩니다.</p>`:''}
         <p class="page-lede" style="margin:0 0 16px">${summary}</p>
         ${hasAI()?`<button class="btn ghost sm" id="dnaAiBtn">AI 심층 총평</button><div id="dnaAiOut"></div>`:''}
       </div>
