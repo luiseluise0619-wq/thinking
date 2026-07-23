@@ -1099,10 +1099,14 @@ async function askAI(system,user,opts){
   const mt=(opts&&opts.max_tokens)||800, back=curBackend();
   // 백엔드 프록시 우선 — 키가 서버에 있어 브라우저에 노출되지 않는다
   if(back){
-    const res=await fetch(back+'/ai/complete',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({system,user,max_tokens:mt})});
-    if(!res.ok)throw new Error('Backend '+res.status);
-    const j=await res.json();return (j.text||'').trim();
+    for(let attempt=0;attempt<2;attempt++){
+      const res=await fetch(back+'/ai/complete',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({system,user,max_tokens:mt})});
+      if(res.ok){const j=await res.json();return (j.text||'').trim();}
+      // 일시적 오류(429·5xx)면 한 번만 재시도 — 한 번 튄다고 규칙 기반으로 떨어지지 않게
+      if(attempt===0 && (res.status===429||res.status>=500)){await new Promise(r=>setTimeout(r,700));continue;}
+      throw new Error('Backend '+res.status);
+    }
   }
   // 직접 Gemini 호출 (개인 실험용 — 키가 브라우저에 노출됨)
   const key=curKey(),model=curModel();
@@ -1116,14 +1120,25 @@ async function askAI(system,user,opts){
 }
 const askClaude=askAI;  // 하위 호환 별칭
 // 모델이 규칙·메타·영어를 뱉어도 걸러내고 순수 한국어 질문만 취한다
+const Q_STARTERS=/^(왜|뭐|누가|누구|언제|어디|어떤|어떻게|무엇|무슨|정말|과연|만약|혹시|진짜|지금|당신|가장|어느|어째서|얼마나|이|그|저|각|두|세|네|모든|몇|첫)$/;
 function splitLines(txt,n){
-  return (txt||'').split(/\n+/)
-    .map(s=>s.replace(/^[\s>*_`~·•\-\d.)\]\[#"']+/,'').replace(/\*+/g,'').trim())
-    .filter(s=>s.length>=6                       // 조각(예: "계") 제거
-      && /[가-힣]/.test(s)                        // 한글 포함
-      && !/[A-Za-z]{4,}/.test(s)                  // 4자 이상 영어 단어가 있으면 메타/혼합 → 제거
-      && !/^(규칙|rule|state|note|참고|답변?|answer|question)\b/i.test(s))
-    .slice(0,n);
+  const seen=new Set(), out=[];
+  for(let raw of (txt||'').split(/\n+/)){
+    const hadNum=/^\s*[>*\-•·]*\s*\d+[.)\]]?\s/.test(raw);   // 원문에 번호가 붙어 있었나
+    let s=raw.replace(/^[\s>*_`~·•\-\d.)\]\[#"']+/,'').replace(/\*+/g,'').trim();
+    // 번호 뒤에 남은 홑음절 조각(예: "1 계 …") 제거 — 정상 의문사(왜/어떤/이 …)는 보존
+    const m=s.match(/^([가-힣])\s+(\S.{7,})$/);
+    if(hadNum && m && !Q_STARTERS.test(m[1])) s=m[2].trim();
+    if(s.length<6) continue;                       // 조각 제거
+    if(!/[가-힣]/.test(s)) continue;                // 한글 포함
+    if(/[A-Za-z]{4,}/.test(s)) continue;           // 4자 이상 영어 단어 → 메타/혼합
+    if(/^(규칙|rule|state|note|참고|답변?|answer|question)\b/i.test(s)) continue;
+    const key=s.replace(/\s+/g,'');
+    if(seen.has(key)) continue; seen.add(key);      // 중복 질문 제거
+    out.push(s);
+    if(out.length>=n) break;
+  }
+  return out;
 }
 
 // HUMAN OS 코치 정체성 — 모든 AI 질문의 공통 전제 (사용자가 스스로 성장하게 만든다)
