@@ -1204,15 +1204,17 @@ function quickComplete(){
   S.history=S.history||[];
   S.history.push({day,n:S.sessions,stats:{...S.stats},metrics:sessionMetrics({answer:R.answer,final:R.answer,frame:'',fwId:null,action:R.action})});
   if(S.history.length>120)S.history=S.history.slice(-120);
-  S.xp+=20;save();renderHome();
+  // 빠른 판단도 품질로: 판단을 적었나 + 행동으로 연결했나 (기본 8 ~ 최대 20)
+  const qxp=8+((R.answer||'').trim().length>14?5:0)+(R.action.length>1?7:0);
+  S.xp+=qxp;save();renderHome();
   document.getElementById('rSteps').innerHTML=[0,1,2].map(()=>`<span class="s on"></span>`).join('');
   document.getElementById('rBody').innerHTML=`<div class="reward">
     <div class="big">✓</div><h2>오늘의 판단 완료!</h2>
     <p style="color:var(--muted);margin:0">5분이면 충분하다. 매일 이 한 바퀴가 사고 근육을 만든다.</p>
-    <div class="gains"><span class="gain">🔥 ${S.streak}일 연속</span><span class="gain">⭐ <b>+20</b> XP</span>${R.action.length>1?'<span class="gain">🚀 오늘의 행동 +1</span>':''}</div>
+    <div class="gains"><span class="gain">🔥 ${S.streak}일 연속</span><span class="gain">⭐ <b>+${qxp}</b> XP</span>${R.action.length>1?'<span class="gain">🚀 오늘의 행동 +1</span>':''}</div>
     <div class="flow-actions" style="justify-content:center;margin-top:16px">
       <button class="btn ghost sm" onclick="renderRoutine()">더 깊이 파고들기</button>
-      <button class="btn sm" onclick="go('dna')">사고 지문 보기 →</button></div>
+      <button class="btn sm" onclick="go('you')">사고 지문 보기 →</button></div>
   </div>`;
 }
 function paintSteps(){document.getElementById('rSteps').innerHTML=STEP_NAMES.map((_,i)=>`<span class="s ${i<=R.step?'on':''}"></span>`).join('')}
@@ -1345,13 +1347,23 @@ function rComplete(){
   document.getElementById('rSteps').innerHTML=STEP_NAMES.map(()=>`<span class="s on"></span>`).join('');
 }
 function grantGains(){
+  // 능력치(스탯) — 어떤 사고 '행동'을 했는지에 따라
   const picks=[['essence',3],['logic',2],['meta',2],['learning',1]];
   if(R.action&&R.action.length>1)picks.push(['exec',3]);
   const map={frame:'essence',first:'essence',why5:'analysis',model:'learning',sys:'analysis','8020':'judge',inv:'creative','2nd':'judge',bayes:'meta',action:'exec'};
   if(R.fwId)picks.push([map[R.fwId]||'creative',2]);
   const applied={};picks.forEach(([k,d])=>{S.stats[k]=(S.stats[k]||0)+d;applied[k]=(applied[k]||0)+d});
   const stats=Object.entries(applied).map(([k,d])=>({icon:ABILITIES.find(a=>a.key===k).icon,d}));
-  return {xp:40,stats};
+  // XP — '출석 횟수'가 아니라 이번 세션의 '사고 품질'로 획득한다.
+  // (그래야 성장 레벨이 실제 사고 깊이와 따로 놀지 않는다. 반복만으로 창조자가 될 수 없음)
+  const m=sessionMetrics(R);
+  let xp=12;                              // 습관 유지 기본치 (하기만 해도 최소 보상)
+  xp+=Math.round((m.depth||0)/100*24);    // 사고 깊이에 비례 (최대 +24)
+  if(m.essence)xp+=8;                     // 본질에 도달
+  if(m.counter)xp+=6;                     // 반례를 고려
+  if(!m.leap)xp+=5;                       // 근거를 붙임(논리적 비약 없음)
+  if(R.action&&R.action.length>1)xp+=7;   // 실행으로 연결
+  return {xp,stats};                      // 범위 ≈ 12(얕음) ~ 62(탁월), 평균 ~35
 }
 
 /* ============================================================
