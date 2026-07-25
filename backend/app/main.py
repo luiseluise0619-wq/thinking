@@ -189,6 +189,11 @@ def _user_metrics(state: dict) -> dict:
     er = lambda arr: (sum(1 for h in arr if h["metrics"].get("essence")) / len(arr)) if arr else 0
     acts = [a for a in (state.get("actions") or []) if a.get("status") != "pending"]
     done = sum(1 for a in acts if a.get("status") == "done")
+    # 사고력 진단(사전/사후) — 효과 검증의 핵심 지표
+    A = state.get("assessments") or []
+    a_base = A[0].get("index") if A else None
+    a_last = A[-1].get("index") if A else None
+    a_delta = (a_last - a_base) if len(A) >= 2 else None
     return {
         "sessions": state.get("sessions", 0),
         "essence_rate": rate(lambda h: h["metrics"].get("essence")),
@@ -197,6 +202,10 @@ def _user_metrics(state: dict) -> dict:
         "avg_depth": (sum(h["metrics"].get("depth", 0) for h in H) / n) if n else None,
         "exec_rate": (done / len(acts)) if acts else None,
         "essence_early": round(er(early), 3), "essence_recent": round(er(recent), 3),
+        "assess_count": len(A),
+        "assess_baseline": a_base, "assess_latest": a_last, "assess_delta": a_delta,
+        "assess_dims_base": (A[0].get("dims") if A else None),
+        "assess_dims_last": (A[-1].get("dims") if A else None),
     }
 
 
@@ -215,12 +224,37 @@ def cohort(x_admin_secret: str = Header(default="")):
         return round(sum(vals) / len(vals), 3) if vals else None
 
     improved = sum(1 for p in active if p["essence_recent"] > p["essence_early"])
+
+    # --- 사고력 진단 집단 집계: 사전+사후를 모두 마친 사용자 대상 (파일럿 효과 검증의 핵심) ---
+    pp = [p for p in per if p.get("assess_delta") is not None]
+
+    def avg_pp(key):
+        vals = [p[key] for p in pp if p.get(key) is not None]
+        return round(sum(vals) / len(vals), 1) if vals else None
+
+    dim_deltas = {}
+    if pp:
+        keys = list((pp[0].get("assess_dims_last") or {}).keys())
+        for k in keys:
+            ds = [p["assess_dims_last"].get(k, 0) - p["assess_dims_base"].get(k, 0)
+                  for p in pp if p.get("assess_dims_last") and p.get("assess_dims_base")]
+            dim_deltas[k] = round(sum(ds) / len(ds), 1) if ds else None
+
+    pre_post = {
+        "users": len(pp),                                  # 사전+사후 완료자 수
+        "avg_baseline_index": avg_pp("assess_baseline"),
+        "avg_latest_index": avg_pp("assess_latest"),
+        "avg_index_delta": avg_pp("assess_delta"),         # 평균 사고력 지수 변화 (핵심 결과)
+        "improved_users": sum(1 for p in pp if p["assess_delta"] > 0),
+        "dim_deltas": dim_deltas,                          # 6개 축별 평균 변화
+    }
     return {
         "users": len(per), "active": len(active),
         "avg_sessions": avg("sessions"),
         "avg_essence_rate": avg("essence_rate"), "avg_counter_rate": avg("counter_rate"),
         "avg_leap_rate": avg("leap_rate"), "avg_exec_rate": avg("exec_rate"),
-        "essence_improved_users": improved,   # 본질 도달률이 오른 사용자 수 (검증 핵심)
+        "essence_improved_users": improved,   # 본질 도달률이 오른 사용자 수 (세션 기반)
+        "pre_post": pre_post,                 # 사전/사후 진단 기반 효과 검증
         "per_user": per,
     }
 
