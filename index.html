@@ -41,7 +41,8 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
-  body{font-family:var(--sans);background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;line-height:1.55}
+  body{font-family:var(--sans);background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased;line-height:1.55;
+    word-break:keep-all;overflow-wrap:break-word}  /* 한글은 어절 단위로만 줄바꿈 — 글자 단위 깨짐 방지 */
   button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
   a{color:var(--acc2)}
   :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:3px}
@@ -71,7 +72,7 @@
 
   /* Page heads (editorial) */
   .page-kicker{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);margin:0 0 12px;display:flex;align-items:center;gap:10px}
-  .page-title{font-family:var(--serif);font-size:30px;font-weight:700;letter-spacing:-.4px;margin:0 0 12px;line-height:1.2}
+  .page-title{font-family:var(--serif);font-size:30px;font-weight:700;letter-spacing:-.4px;margin:0 0 12px;line-height:1.32}
   .page-lede{color:var(--muted);font-size:15.5px;line-height:1.65;max-width:60ch;margin:0 0 26px}
   .divider{height:1px;background:var(--line);border:0;margin:44px 0}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin:0 0 18px;display:flex;align-items:baseline;gap:10px}
@@ -90,7 +91,7 @@
   .home-grid{grid-template-columns:1.4fr .85fr}
   @media(max-width:840px){.home-grid{grid-template-columns:1fr}}
   .hero .kicker{color:var(--acc);font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
-  .hero .q{font-family:var(--serif);font-size:29px;font-weight:700;line-height:1.28;margin:0 0 10px;letter-spacing:-.2px}
+  .hero .q{font-family:var(--serif);font-size:29px;font-weight:700;line-height:1.34;margin:0 0 10px;letter-spacing:-.2px}
   .hero .qsub{color:var(--muted);font-size:14.5px;margin-bottom:24px;max-width:52ch}
   .btn{display:inline-flex;align-items:center;gap:8px;background:var(--txt);color:var(--bg);border:1px solid var(--txt);
     font-weight:600;padding:12px 21px;border-radius:var(--rs);font-size:14.5px;transition:.15s}
@@ -318,7 +319,7 @@
   .today{max-width:760px}
   .today .kicker{font-family:var(--mono);font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--acc);margin-bottom:22px;display:flex;align-items:center;gap:12px}
   .today .kicker .dot{width:5px;height:5px;border-radius:50%;background:var(--acc)}
-  .today .q{font-family:var(--serif);font-size:clamp(30px,5.4vw,46px);font-weight:700;line-height:1.16;letter-spacing:-.6px;margin:0 0 20px;text-wrap:balance}
+  .today .q{font-family:var(--serif);font-size:clamp(30px,5.4vw,46px);font-weight:700;line-height:1.28;letter-spacing:-.6px;margin:0 0 20px;text-wrap:balance;padding-bottom:.06em}
   .today .why{color:var(--muted);font-size:16px;line-height:1.7;max-width:54ch;margin:0 0 34px}
   .today .why b{color:var(--txt);font-weight:600}
   .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
@@ -339,7 +340,7 @@
   /* 성장 (Profile) hero */
   .prof-hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;margin-bottom:8px}
   @media(max-width:760px){.prof-hero{grid-template-columns:1fr;gap:20px}}
-  .prof-hero .big{font-family:var(--serif);font-size:clamp(30px,5vw,42px);font-weight:700;line-height:1.15;letter-spacing:-.4px;margin:10px 0 14px}
+  .prof-hero .big{font-family:var(--serif);font-size:clamp(30px,5vw,42px);font-weight:700;line-height:1.28;letter-spacing:-.4px;margin:10px 0 14px;padding-bottom:.06em}
   .prof-hero .big b{color:var(--acc2)}
   .radar-wrap{display:flex;flex-direction:column;align-items:center}
   .section{margin-top:52px}
@@ -478,7 +479,7 @@
 <div class="modal" id="onboard" role="dialog" aria-modal="true" aria-label="환영">
   <div class="box" style="max-width:460px">
     <p class="page-kicker" style="margin-bottom:10px">환영합니다</p>
-    <h2 style="font-family:var(--serif);font-size:25px;margin:0 0 10px;line-height:1.25">답을 주는 앱이 아닙니다.<br>사고를 벼리는 훈련장입니다.</h2>
+    <h2 style="font-family:var(--serif);font-size:25px;margin:0 0 10px;line-height:1.35">답을 주는 앱이 아닙니다.<br>사고를 벼리는 훈련장입니다.</h2>
     <p class="hint" style="font-size:14px;color:var(--muted);margin-bottom:20px">ChatGPT는 답을, Notion은 기록을 줍니다. THINK OS는 매일 하나의 질문으로 <b>당신의 생각하는 힘</b>을 키웁니다.</p>
     <div class="ob-steps">
       <div class="ob-step"><span class="ob-n">01</span><div><b>매일 5–10분</b><p>오늘의 질문에 답하면, AI가 답 대신 당신의 사고를 반박합니다.</p></div></div>
