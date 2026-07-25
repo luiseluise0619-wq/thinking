@@ -1479,8 +1479,8 @@ function renderYou(){
 
   const hist=S.history||[];let chgHtml='',period='2회 이상 훈련 시';
   if(hist.length>=2){
-    const first=hist[0].stats,last=hist[hist.length-1].stats;
-    period=`${hist[0].day} → ${hist[hist.length-1].day}`;
+    const first=DEFAULT.stats,last=hist[hist.length-1].stats;   // 시작 시드 기준 = 진짜 총 성장(첫 세션 증가분 누락 방지)
+    period=`시작 → ${hist[hist.length-1].day}`;
     chgHtml=ABILITIES.map(a=>({a,f:first[a.key],t:last[a.key]})).filter(r=>r.f!=null&&r.t!=null)
       .map(r=>({...r,d:r.t-r.f})).sort((x,y)=>y.d-x.d)
       .map(r=>{const cls=r.d>0?'up':r.d<0?'dn':'flat';const sign=r.d>0?'+':'';
