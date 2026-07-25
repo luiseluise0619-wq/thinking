@@ -708,6 +708,7 @@ function nextLevel(){const c=currentLevel();return LEVELS.find(l=>l.n===c.n+1)||
 
 // ---------- Nav ----------
 function go(tab){
+  if(!document.getElementById('view-'+tab)){tab='home';}   // 잘못된 탭 → 빈 화면 대신 홈으로 폴백
   const navTab=(tab==='routine')?'home':tab;
   document.querySelectorAll('.mast-nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===navTab));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='view-'+tab));
@@ -1341,7 +1342,7 @@ function rComplete(){
       </div>
       <p style="margin-top:18px;color:var(--muted)">현재 <b style="color:var(--gold)">Lv${c.n} ${c.name}</b></p>
       <div class="flow-actions" style="justify-content:center;margin-top:16px">
-        <button class="btn ghost sm" onclick="go('growth')">성장 보기</button>
+        <button class="btn ghost sm" onclick="go('you')">성장 보기</button>
         <button class="btn sm" onclick="go('coach')">고민 코칭 받기 →</button></div>
     </div>`;
   document.getElementById('rSteps').innerHTML=STEP_NAMES.map(()=>`<span class="s on"></span>`).join('');
