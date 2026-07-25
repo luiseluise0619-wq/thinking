@@ -790,6 +790,8 @@ const PROBLEMS = [
 ];
 
 const COACH_EXAMPLES = ['퇴사할까?','이 사업 시작할까?','대학원 갈까?','AI가 의료를 혁신할 것이다','이 사람과 계속 만날까?','지금 집을 사야 할까?','이 기능을 출시해야 할까?','새 언어를 배울까?','이직 제안을 받아들일까?'];
+// 소크라테스 질문 각도 풀 — 매번 이 중 일부를 뽑아 다양한 조합·개수로 묻는다
+const COACH_ANGLES = ['진짜 목적(이걸로 정말 얻으려는 것)','환경 탓인지 목표 탓인지','6개월 뒤 틀렸음을 알 신호','손실은 작고 이득은 큰 대안','되돌릴 수 있는지(가역성)','이번 주에 할 수 있는 가장 작은 검증 행동','이 판단을 지탱하는 숨은 가정과 그게 깨질 때','1년 뒤의 내가 후회할 지점','이 문제를 완전히 다르게 정의하면','반대편의 가장 강한 주장'];
 
 // LLM 프로바이더 — Gemini 전용
 const PROVIDERS={
@@ -1053,7 +1055,7 @@ function thinkingStance(text, ctx){
 }
 
 // 적응형 소크라테스 엔진 — 감지된 사고 상태에 따라 질문 전략을 바꾼다
-function challenge(answer, problem){
+function challenge(answer, problem, n){
   const a=analyzeText(answer);
   const stance=thinkingStance(answer, problem);
   const topic=(problem||'').replace(/왜 |\?/g,'').trim()||'이 주제';
@@ -1065,6 +1067,7 @@ function challenge(answer, problem){
       `이 개념의 <b>핵심 구조</b>는? 무엇과 무엇으로 이루어져 있나?`,
       `그 요소들은 <b>왜 그렇게 작동</b>하나? 하나를 빼면 무너지는 건 무엇인가?`,
       `가장 <b>비슷하지만 다른 것</b>과 어떻게 구별되나? (경계 짓기)`,
+      `한 문장으로 <b>남에게 설명</b>한다면? 막히는 곳이 진짜 이해 못 한 지점이다.`,
     ];
   }else if(stance==='decide'){
     // 결정 중 → 선택지·가역성·비대칭
@@ -1072,6 +1075,7 @@ function challenge(answer, problem){
       `이 결정이 <b>틀렸다는 걸</b> 나중에 무엇을 보고 알게 될까?`,
       `이 선택은 <b>되돌릴 수 있나</b>? 되돌릴 수 없다면, 왜 지금 결정해야 하나?`,
       `제3의 길, 특히 <b>손실은 작고 이득은 큰</b> 선택지는 없나?`,
+      `1년 뒤의 내가 이 결정을 본다면, 무엇을 <b>후회</b>할 것 같나?`,
     ];
   }else{
     // 주장·확신 → 반증 우선 + 감지된 약점
@@ -1082,9 +1086,10 @@ function challenge(answer, problem){
     bank.push(!a.counter
       ? `이 설명으로 <b>설명되지 않는 사례</b>를 하나 떠올려보라. 없다면, 왜 없다고 확신하나?`
       : `"${topic}"의 <b>근본 동인</b>은? 통념을 걷어내고 더 못 쪼갤 때까지 내려가면?`);
+    bank.push(`이 주장이 <b>정말 맞다면</b>, 그다음엔 무슨 일이 벌어지나? (2차 결과)`);
   }
   const surface=a.surface||(stance==='assert'&&!a.because&&!a.causal);
-  return {surface,stance,qs:bank.slice(0,3)};
+  return {surface,stance,qs:bank.slice(0,n||3)};
 }
 
 /* --- 측정 기반 사고 지표 (Thinking DNA 신뢰성의 핵심) --- */
@@ -1259,6 +1264,8 @@ async function askAI(system,user,opts){
 }
 const askClaude=askAI;  // 하위 호환 별칭
 // 모델이 규칙·메타·영어를 뱉어도 걸러내고 순수 한국어 질문만 취한다
+const randInt=(a,b)=>a+Math.floor(Math.random()*(b-a+1));   // 질문 개수를 매번 다양하게
+function sampleN(arr,n){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a.slice(0,n);}
 const Q_STARTERS=/^(왜|뭐|누가|누구|언제|어디|어떤|어떻게|무엇|무슨|정말|과연|만약|혹시|진짜|지금|당신|가장|어느|어째서|얼마나|이|그|저|각|두|세|네|모든|몇|첫)$/;
 function splitLines(txt,n){
   const seen=new Set(), out=[];
@@ -1410,6 +1417,7 @@ function rSet(field,elId,next){R[field]=(document.getElementById(elId).value||''
 async function runAttack(){
   const box=document.getElementById('atkBox');let data;
   const stance=thinkingStance(R.answer,R.problem);   // 로컬 감지 (AI/규칙 공통 표시)
+  const nQ=randInt(2,4);                              // 반박 질문 개수를 매번 다양하게
   if(hasAI()){
     try{
       const guide={
@@ -1417,13 +1425,13 @@ async function runAttack(){
         decide:'사용자는 결정 중이다. 되돌릴 수 있는지(가역성), 손실은 작고 이득은 큰 제3의 선택지, 1년 뒤 후회 가능성을 묻는다.',
         learn:'사용자는 개념을 배우는 중이다. 공격하지 말고 핵심 구조·작동 원리·비슷하지만 다른 것과의 경계를 스스로 세우게 하는 질문을 한다.'
       }[stance];
-      const sys=`너는 사용자의 생각을 날카롭게 검증하는 한국어 사고 코치다. 아래 답변을 스스로 더 깊이 파고들게 만드는 질문 3개만 쓴다. 질문 방향(사용자에게 드러내지 말 것): ${guide}
+      const sys=`너는 사용자의 생각을 날카롭게 검증하는 한국어 사고 코치다. 아래 답변을 스스로 더 깊이 파고들게 만드는 질문 ${nQ}개만 쓴다. 질문 방향(사용자에게 드러내지 말 것): ${guide}
 출력 규칙(엄격): 각 줄에 질문 하나, 물음표(?)로 끝낸다. 오직 순수 한국어로만 — 영어 단어·라벨·괄호 설명·번호·별표·머리말을 절대 쓰지 마라. 좋은 예: 그 생각이 틀렸다면 어떤 증거를 보게 될까요?`;
       const txt=await askAI(sys,`문제: ${R.problem}\n문제 재정의: ${R.frame}\n내 답: ${R.answer}`);
-      const qs=splitLines(txt,3);
-      data=qs.length?{surface:false,stance,qs,ai:true}:{...challenge(R.answer,R.problem),err:true};
-    }catch(e){data={...challenge(R.answer,R.problem),err:true}}
-  }else{await new Promise(r=>setTimeout(r,650));data=challenge(R.answer,R.problem);}  // 분석하는 듯한 짧은 여백
+      const qs=splitLines(txt,nQ);
+      data=qs.length?{surface:false,stance,qs,ai:true}:{...challenge(R.answer,R.problem,nQ),err:true};
+    }catch(e){data={...challenge(R.answer,R.problem,nQ),err:true}}
+  }else{await new Promise(r=>setTimeout(r,650));data=challenge(R.answer,R.problem,nQ);}  // 분석하는 듯한 짧은 여백
   R.atk=data;
   const st=STANCE[data.stance||stance];
   const verdict=(data.stance==='learn')
@@ -1716,7 +1724,8 @@ function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&l
 async function gsStart(mid){
   const topic=document.getElementById('coachInput').value.trim();
   if(!topic){const i=document.getElementById('coachInput');i.focus();i.style.borderColor='var(--acc)';setTimeout(()=>i.style.borderColor='',1200);return;}
-  GS={method:METHODS.find(x=>x.id===mid),topic,phase:'dialogue',turns:[],thinking:true,report:null};
+  const method=METHODS.find(x=>x.id===mid);
+  GS={method,topic,phase:'dialogue',turns:[],thinking:true,report:null,target:randInt(3,method.qs.length)};   // 질문 수 매번 다양하게
   gsView();
   const q=await gsNextQuestion();
   GS.turns.push({role:'ai',n:1,text:q});GS.thinking=false;gsView();
@@ -1740,7 +1749,7 @@ async function gsAnswer(){
   if(!v){ta?.focus();return;}
   GS.turns.push({role:'user',text:v});
   const answered=GS.turns.filter(t=>t.role==='user').length;
-  if(answered>=GS.method.qs.length)return gsFinish();
+  if(answered>=(GS.target||GS.method.qs.length))return gsFinish();
   GS.thinking=true;gsView();
   const q=await gsNextQuestion();
   GS.turns.push({role:'ai',n:answered+1,text:q});GS.thinking=false;gsView();
@@ -1862,21 +1871,23 @@ async function doCoach(){
   const out=document.getElementById('coachOut');
   out.innerHTML=`<div class="qitem"><div class="thinking"><span class="d"></span> AI가 ${coachMode==='debate'?'당신의 주장을 공격':'파고들 질문을'} 준비 중...</div></div>`;
   let items,debate=(coachMode==='debate');
+  const nQ=debate?randInt(3,5):randInt(4,6);   // 개수를 매번 다양하게 (기계적 고정 방지)
   if(hasAI()){
     try{
+      const angles=sampleN(COACH_ANGLES,nQ).join(', ');
       const sys=debate
-        ?`너는 사용자의 주장을 여러 입장에서 반박하는 한국어 논쟁 파트너다. 다섯 입장 — 반대 입장(정반대가 참이라면), 전문가(놓친 변수), 현실 비판자(증거·수요·실행 경험), 회의론자(가장 먼저 무너질 지점), 스틸맨(상대의 최강 버전을 세운 뒤 반박) — 에서 각각 이 주장에만 해당하는 구체적 반박 질문을 하나씩 한다. 출력은 정확히 5줄, 각 줄 "입장: 질문" 형식의 한국어. 설명·머리말·영어·번호 없이 그 5줄만.`
-        :`너는 한국어 사고 코치다. 사용자의 고민에 답하지 말고, 스스로 답에 도달하게 만드는 질문 6개만 쓴다.
+        ?`너는 사용자의 주장을 여러 입장에서 반박하는 한국어 논쟁 파트너다. 다음 입장들 중 ${nQ}개를 골라 — 반대 입장(정반대가 참이라면), 전문가(놓친 변수), 현실 비판자(증거·수요·실행 경험), 회의론자(가장 먼저 무너질 지점), 스틸맨(상대의 최강 버전을 세운 뒤 반박) — 각각 이 주장에만 해당하는 구체적 반박 질문을 하나씩 한다. 출력은 정확히 ${nQ}줄, 각 줄 "입장: 질문" 형식의 한국어. 설명·머리말·영어·번호 없이 그 ${nQ}줄만.`
+        :`너는 한국어 사고 코치다. 사용자의 고민에 답하지 말고, 스스로 답에 도달하게 만드는 질문 ${nQ}개만 쓴다.
 출력 규칙(엄격): 각 줄에 질문 하나, 반드시 물음표(?)로 끝낸다. 오직 순수 한국어로만 — 영어 단어·라벨·괄호 설명·번호·별표를 절대 쓰지 마라.
 좋은 예: 이 결정으로 진짜 얻으려는 건 무엇인가요?
-6가지 각도를 한 줄씩 다룬다: 진짜 목적, 환경 탓인지 목표 탓인지, 6개월 뒤 틀렸음을 알 신호, 손실은 작고 이득은 큰 대안, 되돌릴 수 있는지, 이번 주에 할 수 있는 가장 작은 검증 행동.`;
+다음 각도를 한 줄씩 다룬다: ${angles}.`;
       const txt=await askAI(sys,`${debate?'내 주장':'내 고민'}: ${v}`);
-      const lines=splitLines(txt,6);
+      const lines=splitLines(txt,nQ);
       if(!lines.length)throw new Error('empty');
       items=debate?lines.map(l=>{const i=l.indexOf(':');return i>0?{stance:l.slice(0,i).trim(),q:l.slice(i+1).trim(),color:'var(--acc2)'}:{q:l,color:'var(--acc2)'}})
                   :lines.map(q=>({q,why:''}));
-    }catch(e){items=debate?debateQuestions(v):coachQuestions(v)}
-  }else items=debate?debateQuestions(v):coachQuestions(v);
+    }catch(e){items=debate?sampleN(debateQuestions(v),nQ):coachQuestions(v).slice(0,nQ)}
+  }else items=debate?sampleN(debateQuestions(v),nQ):coachQuestions(v).slice(0,nQ);
   const header=`<div class="qitem" style="border-left:3px solid var(--acc)">
       <div class="num" style="color:var(--warn)">✕</div>
       <div><div class="qt">바로 답은 주지 않는다.</div><div class="qwhy">${debate?'너의 주장을 여러 입장에서 공격한다. 각 반박에 스스로 답하며 논리를 단단히 하라.':'답을 주면 사고 근육은 자라지 않는다. 각 질문에 스스로 답해보라.'}</div></div></div>`;
