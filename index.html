@@ -197,6 +197,42 @@
   .qitem .qwhy{color:var(--muted2);font-family:var(--mono);font-size:11px;margin-top:5px;letter-spacing:.2px}
   .stance{width:auto!important;padding:0 9px;font-size:10.5px;letter-spacing:.3px}
 
+  /* 가이드 세션 (턴제 소크라테스) */
+  .gs-hint{color:var(--muted);font-size:14px;margin:4px 0 16px}
+  .gs-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:640px){.gs-methods{grid-template-columns:1fr}}
+  .gs-m{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;transition:.15s;display:block}
+  .gs-m:hover{border-color:var(--acc);transform:translateY(-1px)}
+  .gs-m .e{font-size:20px;display:block;margin-bottom:6px}
+  .gs-m b{font-family:var(--serif);font-size:16px;display:block;margin-bottom:4px}
+  .gs-m small{color:var(--muted2);font-size:12.5px;line-height:1.5;display:block}
+  .gs-session{animation:fade .35s ease both}
+  .gs-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .gs-badge{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--acc2);background:var(--panel2);border:1px solid var(--line);border-radius:var(--rs);padding:5px 10px;letter-spacing:.3px}
+  .gs-exit{font-family:var(--mono);font-size:11px;color:var(--muted2)}
+  .gs-exit:hover{color:var(--acc)}
+  .gs-intro{background:var(--panel2);border-left:3px solid var(--acc2);border-radius:0 var(--rs) var(--rs) 0;padding:12px 14px;font-size:13.5px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+  .gs-thread{display:grid;gap:10px;margin-bottom:14px}
+  .gs-q{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;font-family:var(--serif);font-size:16.5px;font-weight:500;line-height:1.5}
+  .gs-q .gs-qn{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--acc);margin-right:8px}
+  .gs-a{background:var(--acc2);color:#fff;border-radius:var(--r);padding:12px 15px;font-size:14.5px;line-height:1.55;margin-left:24px;white-space:pre-wrap}
+  .gs-input{width:100%;min-height:80px;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);padding:13px;font-size:15px;line-height:1.6;color:var(--txt);resize:vertical}
+  .gs-actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+  .gs-report{animation:fade .4s ease both}
+  .gs-sec{margin-bottom:20px}
+  .gs-sec h4{font-family:var(--mono);font-size:12px;letter-spacing:.8px;color:var(--acc);margin:0 0 10px;display:flex;align-items:center;gap:10px;text-transform:none}
+  .gs-total{font-family:var(--serif);font-size:18px;color:var(--txt);font-weight:700}
+  .gs-ax{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .gs-ax .k{font-family:var(--mono);font-size:11px;color:var(--muted2);flex:none;width:96px;padding-top:2px}
+  .gs-ax .v{font-size:14px;line-height:1.55}
+  .gs-score{display:grid;grid-template-columns:88px 1fr 44px;align-items:center;gap:10px;margin-bottom:4px}
+  .gs-score .sn{font-size:13px;font-weight:600}
+  .gs-score .sb{height:7px;border-radius:2px;background:var(--panel2);overflow:hidden}
+  .gs-score .sb i{display:block;height:100%;border-radius:2px}
+  .gs-score .sv{font-family:var(--mono);font-size:12px;text-align:right;color:var(--muted)}
+  .gs-score .sr{grid-column:1/-1;color:var(--muted2);font-size:12.5px;line-height:1.5;margin:0 0 10px}
+  .gs-mission p{background:var(--panel2);border:1px dashed var(--line2);border-radius:var(--r);padding:14px;font-size:14.5px;line-height:1.6;margin:0}
+
   .levels{display:grid;gap:11px}
   .lvl-row{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
   .lvl-row.cur{border-color:var(--acc);box-shadow:inset 2px 0 0 var(--acc)}
@@ -437,6 +473,7 @@
       <div class="mode-toggle" id="coachMode">
         <button data-mode="socratic" class="active">소크라테스 · 질문</button>
         <button data-mode="debate">논쟁 · 반박</button>
+        <button data-mode="guide">가이드 세션 · 끝까지</button>
       </div>
       <div class="coach-in">
         <input id="coachInput" placeholder="예: 퇴사할까? · 이 사업 시작할까? · AI가 의료를 혁신할 것이다" />
@@ -1377,18 +1414,238 @@ function grantGains(){
 /* ============================================================
    COACH (socratic + debate)
 ============================================================ */
+/* ============================================================
+   가이드 세션 — 한 번에 사고법 하나로 끝까지 이끄는 턴제 코치
+   ① 사고법 소개 → ② 질문 하나씩 → ③ 분석 → ④ 현실 비교 → ⑤ 6축 채점 → ⑥ 미션
+   (AI 없으면 규칙 기반으로 동작)
+============================================================ */
+const METHODS=[
+  {id:'first',icon:'🧱',name:'원칙 사고',fw:'first',
+   why:'통념과 비유를 걷어내고, 더 못 쪼갤 근본 사실에서 다시 쌓아 올린다.',
+   guide:'통념·관례·비유를 걷어내게 하라. "왜 그런가"를 근본까지, 더는 쪼갤 수 없는 사실이 남을 때까지 파고든다.',
+   qs:['이 문제에서 모두가 당연하게 여기는 전제는 무엇인가요?',
+       '그 전제가 사실이라고 어떻게 확신하나요? 근거는요?',
+       '그 전제를 걷어내면, 더 못 쪼갤 근본 사실만 남기면 무엇인가요?',
+       '그 근본 사실만으로 다시 쌓으면, 결론이 달라지나요?']},
+  {id:'socratic',icon:'❓',name:'소크라테스 문답',fw:'why5',
+   why:'스스로도 몰랐던 전제와 모순을 질문으로 드러낸다.',
+   guide:'정의→전제→근거→함의→반례 순으로 캐물어라. 사용자가 쓴 모호한 단어의 정의부터 되묻는다.',
+   qs:['지금 쓴 핵심 단어를 당신은 정확히 어떻게 정의하나요?',
+       '그렇게 생각하는 근거는 무엇인가요?',
+       '그 근거가 정반대 결론에도 쓰일 수 있진 않나요?',
+       '만약 그것이 참이라면, 어떤 결론까지 받아들여야 하나요?']},
+  {id:'system',icon:'🔗',name:'시스템 사고',fw:'sys',
+   why:'하나의 원인이 아니라 요소들의 관계·피드백·지렛대점을 본다.',
+   guide:'요소→관계→피드백 루프→지렛대점 순으로 이끈다. 단선적 인과를 구조로 바꾸게 한다.',
+   qs:['이 문제에 얽힌 핵심 요소(사람·구조·자원)를 셋만 꼽으면?',
+       '그 요소들은 서로 어떻게 영향을 주고받나요?',
+       '어느 고리가 스스로를 강화하나요(악순환·선순환)?',
+       '가장 작은 힘으로 전체를 바꿀 지점(지렛대)은 어디인가요?']},
+  {id:'inversion',icon:'🔄',name:'역발상',fw:'inv',
+   why:'성공을 좇는 대신 실패를 피하는 길에서 답이 더 선명해진다.',
+   guide:'"어떻게 하면 이걸 확실히 망칠까"를 상상하게 한 뒤, 그 반대를 원칙으로 뒤집게 한다.',
+   qs:['이 일을 가장 확실하게 <b>망치는</b> 방법 셋은 무엇일까요?',
+       '지금 당신의 계획은 그 실패 요인들을 얼마나 피하고 있나요?',
+       '그 실패들을 뒤집으면, 반드시 지켜야 할 원칙은 무엇인가요?']},
+  {id:'2nd',icon:'♟️',name:'2차 사고',fw:'2nd',
+   why:'첫 결과 너머의 연쇄 효과가 진짜 결과다.',
+   guide:'"그다음엔?"을 반복해 2차·3차 결과와 부작용, 남들의 반응까지 내려가게 한다.',
+   qs:['이 선택의 <b>즉각적인</b> 1차 결과는 무엇인가요?',
+       '그 결과가 만들어내는 <b>그다음</b> 결과는요? (2차)',
+       '그리고 <b>또 그다음</b>은요? 누가 어떻게 반응하나요? (3차)',
+       '2·3차까지 보면 첫 판단이 여전히 최선인가요?']},
+  {id:'prob',icon:'🎲',name:'확률적 사고',fw:'bayes',
+   why:'확신이 아니라 확률·기저율·반증으로 판단의 질을 높인다.',
+   guide:'주장을 확률로 환산하게 하고 기저율·반증 신호·기대값을 묻는다. 0/100 확신을 분해한다.',
+   qs:['당신의 결론이 맞을 확률을 숫자로 매기면 몇 %인가요? 왜 그 숫자죠?',
+       '비슷한 상황에서 그게 실제로 맞았던 <b>기저율</b>은 어느 정도일까요?',
+       '무엇을 보면 그 확률을 낮춰야 하나요? (반증 신호)',
+       '맞을 때 이득과 틀릴 때 손실을 함께 놓으면, 걸 만한가요?']},
+];
+const GS_AXES=['논리성','근거 활용','반례 고려','유연성','현실성','창의성'];
+let GS=null;
+
+function gsView(){
+  const out=document.getElementById('coachOut');
+  if(!GS){
+    out.innerHTML=`<div class="gs-pick">
+      <p class="gs-hint">훈련할 <b>주제</b>를 위에 적고, 오늘 쓸 <b>사고법 하나</b>를 고르세요. 코치가 답 대신 질문으로 끝까지 이끕니다.</p>
+      <div class="gs-methods">${METHODS.map(m=>`<button class="gs-m" data-m="${m.id}"><span class="e">${m.icon}</span><b>${m.name}</b><small>${m.why}</small></button>`).join('')}</div>
+    </div>`;
+    out.querySelectorAll('.gs-m').forEach(btn=>btn.onclick=()=>gsStart(btn.dataset.m));
+    return;
+  }
+  const m=GS.method;
+  let h=`<div class="gs-session">
+    <div class="gs-head"><span class="gs-badge">${m.icon} ${m.name}</span><button class="gs-exit" onclick="gsQuit()">그만두기</button></div>
+    <div class="gs-intro"><b>① ${m.name}</b> — ${m.why}</div>
+    <div class="gs-thread">`;
+  GS.turns.forEach(t=>{ h+= t.role==='ai'
+    ? `<div class="gs-q"><span class="gs-qn">Q${t.n}</span>${t.text}</div>`
+    : `<div class="gs-a">${escapeHtml(t.text)}</div>`; });
+  h+=`</div>`;
+  if(GS.phase==='dialogue'){
+    h+= GS.thinking
+      ? `<div class="thinking"><span class="d"></span> 다음 질문을 준비 중...</div>`
+      : `<textarea id="gsAns" class="gs-input" placeholder="스스로 생각해 답해보세요... (⌘/Ctrl+Enter로 제출)"></textarea>
+         <div class="gs-actions"><button class="btn" onclick="gsAnswer()">답하고 다음 →</button>
+         ${GS.turns.filter(t=>t.role==='user').length>=2?`<button class="btn ghost sm" onclick="gsFinish()">여기서 평가받기</button>`:''}</div>`;
+  }else if(GS.phase==='report'){
+    h+= GS.report ? gsReportHtml(GS.report)
+                  : `<div class="thinking"><span class="d"></span> 세션을 분석하고 채점하는 중...</div>`;
+  }
+  h+=`</div>`;
+  out.innerHTML=h;
+  const ta=document.getElementById('gsAns');
+  if(ta){ta.focus();ta.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))gsAnswer();};}
+}
+function escapeHtml(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function gsStart(mid){
+  const topic=document.getElementById('coachInput').value.trim();
+  if(!topic){const i=document.getElementById('coachInput');i.focus();i.style.borderColor='var(--acc)';setTimeout(()=>i.style.borderColor='',1200);return;}
+  GS={method:METHODS.find(x=>x.id===mid),topic,phase:'dialogue',turns:[],thinking:true,report:null};
+  gsView();
+  const q=await gsNextQuestion();
+  GS.turns.push({role:'ai',n:1,text:q});GS.thinking=false;gsView();
+}
+async function gsNextQuestion(){
+  const m=GS.method, asked=GS.turns.filter(t=>t.role==='ai').length;
+  if(hasAI()){
+    try{
+      const sys=`너는 사용자의 사고를 대신하지 않는 한국어 사고 코치다. 오직 '${m.name}' 사고법 하나만 쓴다. 절대 답·해결책·정답을 주지 마라. 사용자가 스스로 더 깊이 생각하게 만드는 질문 '하나'만 한다. ${m.guide}
+출력 규칙(엄격): 순수 한국어 질문 한 문장, 물음표로 끝. 영어·번호·별표·머리말·설명 금지.`;
+      const convo=`주제: ${GS.topic}\n`+GS.turns.map(t=>t.role==='ai'?`코치 질문: ${t.text}`:`사용자 답: ${t.text}`).join('\n')+`\n\n위 흐름에서 한 걸음 더 깊이 데려갈 다음 질문 하나만:`;
+      const txt=await askAI(sys,convo,{max_tokens:400});
+      const q=splitLines(txt,1)[0];
+      if(q)return q;
+    }catch(e){}
+  }
+  return m.qs[asked]||m.qs[m.qs.length-1];
+}
+async function gsAnswer(){
+  const ta=document.getElementById('gsAns');const v=(ta?.value||'').trim();
+  if(!v){ta?.focus();return;}
+  GS.turns.push({role:'user',text:v});
+  const answered=GS.turns.filter(t=>t.role==='user').length;
+  if(answered>=GS.method.qs.length)return gsFinish();
+  GS.thinking=true;gsView();
+  const q=await gsNextQuestion();
+  GS.turns.push({role:'ai',n:answered+1,text:q});GS.thinking=false;gsView();
+}
+function gsParseJson(txt){
+  let raw=(txt||'').trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
+  const s=raw.indexOf('{'),e=raw.lastIndexOf('}');
+  if(s<0||e<=s)return null;
+  try{return JSON.parse(raw.slice(s,e+1));}catch(_){return null;}
+}
+async function gsFinish(){
+  GS.phase='report';GS.report=null;gsView();
+  GS.report=await gsBuildReport();
+  gsView();
+  gsLogGrowth(GS.report);
+}
+async function gsBuildReport(){
+  const m=GS.method;
+  const answers=GS.turns.filter(t=>t.role==='user').map(t=>t.text).join(' ');
+  if(hasAI()){
+    try{
+      const sys=`너는 사고 코치다. 아래 '${m.name}' 세션 전체를 평가한다. 반드시 유효한 JSON 하나만 출력하고 그 밖의 텍스트는 절대 쓰지 마라. 모든 값은 한국어.
+{"analysis":{"reached":"사용자가 스스로 도달한 지점","led":"코치 질문이 이끈 지점","missed":"사용자가 놓친 부분","leap":"사고의 비약이 있던 곳"},
+"reality":"실제 전문가들은 이 문제를 보통 어떻게 접근하는지, 그리고 사용자의 사고와 비교한 강점·부족(객관적으로, 무조건 틀렸다고 하지 말 것)",
+"scores":{"논리성":0,"근거 활용":0,"반례 고려":0,"유연성":0,"현실성":0,"창의성":0},
+"reasons":{"논리성":"이유","근거 활용":"이유","반례 고려":"이유","유연성":"이유","현실성":"이유","창의성":"이유"},
+"mission":"같은 사고법으로 도전할 더 어려운 문제 하나, 또는 다른 사고법으로 같은 문제를 다시 보는 미션"}
+점수는 0~10 정수.`;
+      const usr=`주제: ${GS.topic}\n사고법: ${m.name}\n대화:\n`+GS.turns.map(t=>t.role==='ai'?`Q: ${t.text}`:`A: ${t.text}`).join('\n');
+      const txt=await askAI(sys,usr,{max_tokens:1400});
+      const j=gsParseJson(txt);
+      if(j&&j.scores)return {...j,ai:true};
+    }catch(e){}
+  }
+  return gsRuleReport(answers,m);
+}
+function gsRuleReport(answers,m){
+  const a=analyzeText(answers), pick=(c,hi,lo)=>c?hi:lo;
+  const scores={
+    '논리성':pick(a.because||a.causal,7,4),
+    '근거 활용':pick(a.evidence||a.because,7,4),
+    '반례 고려':pick(a.counter,7,3),
+    '유연성':pick(a.words>40,7,5),
+    '현실성':pick(/\d|주|일|명|원|%|시간/.test(answers),7,5),
+    '창의성':pick(a.words>60,6,4),
+  };
+  const reasons={
+    '논리성':a.because?'답변에 근거·인과의 연결이 드러났습니다.':'주장에 "왜"가 부족해 연결이 약했습니다.',
+    '근거 활용':a.evidence?'구체적 근거를 제시했습니다.':'느낌 수준의 근거가 많았습니다.',
+    '반례 고려':a.counter?'스스로 반례를 떠올렸습니다.':'반대 사례를 거의 고려하지 않았습니다.',
+    '유연성':a.words>40?'관점을 여러 번 바꿔본 흔적이 있습니다.':'한 관점에 머무는 경향이 있었습니다.',
+    '현실성':/\d/.test(answers)?'수치·기한 등 검증 가능한 요소가 있었습니다.':'검증 가능한 구체가 더 필요합니다.',
+    '창의성':a.words>60?'대안을 폭넓게 밀어붙였습니다.':'제3의 대안을 더 밀어붙일 여지가 있습니다.',
+  };
+  return {ai:false,
+    analysis:{reached:'주제의 핵심을 스스로 짚기 시작했습니다.',
+      led:`${m.name}의 단계별 질문이 한 층 더 깊은 지점으로 이끌었습니다.`,
+      missed:a.counter?'구체적 검증·실행까지는 덜 내려갔습니다.':'반대 증거를 충분히 찾지 않았습니다.',
+      leap:a.because?'근거와 결론 사이 연결은 대체로 이어졌습니다.':'근거 없이 결론으로 건너뛴 지점이 있었습니다.'},
+    reality:`실제 전문가는 ${m.name}을(를) 쓸 때 결론을 서두르지 않고 전제와 반례를 먼저 소진합니다. 당신은 방향은 잡았으니, 근거와 반례의 밀도를 높이면 판단의 질이 크게 오릅니다.`,
+    scores,reasons,
+    mission:`같은 '${m.name}'으로 더 어려운 문제에 도전해보세요 — "${GS.topic}"에서 당신의 결론이 정반대라고 가정하고 처음부터 다시. 또는 같은 주제를 다른 사고법으로 다시 보세요.`};
+}
+function gsReportHtml(r){
+  const ax=r.analysis||{};
+  const axRows=[['스스로 도달',ax.reached],['질문이 이끈 곳',ax.led],['놓친 부분',ax.missed],['사고의 비약',ax.leap]]
+    .map(([k,v])=>`<div class="gs-ax"><span class="k">${k}</span><span class="v">${v||'—'}</span></div>`).join('');
+  const total=GS_AXES.reduce((s,k)=>s+(Math.max(0,Math.min(10,Number(r.scores?.[k])||0))),0);
+  const scoreRows=GS_AXES.map(k=>{const n=Math.max(0,Math.min(10,Number(r.scores?.[k])||0));
+    const col=n>=7?'var(--good)':n>=4?'var(--gold)':'var(--acc)';
+    return `<div class="gs-score"><span class="sn">${k}</span><span class="sb"><i style="width:${n*10}%;background:${col}"></i></span><span class="sv">${n}/10</span>
+      <span class="sr">${r.reasons?.[k]||''}</span></div>`}).join('');
+  return `<div class="gs-report">
+    <div class="gs-sec"><h4>③ 사고 과정 분석 ${r.ai?'<span class="badge-ai">'+providerName()+'</span>':''}</h4>${axRows}</div>
+    <div class="gs-sec"><h4>④ 현실 비교</h4><p style="font-size:14.5px;line-height:1.65;margin:0">${r.reality||'—'}</p></div>
+    <div class="gs-sec"><h4>⑤ 최종 피드백 <span class="gs-total">${total}/60</span></h4>${scoreRows}</div>
+    <div class="gs-sec gs-mission"><h4>⑥ 개선 미션</h4><p>${r.mission||'—'}</p></div>
+    <div class="gs-actions"><button class="btn" onclick="gsRestart()">새 세션 시작</button><button class="btn ghost sm" onclick="go('you')">성장에 반영됨 · 보기 →</button></div>
+  </div>`;
+}
+function gsQuit(){GS=null;gsView();}
+function gsRestart(){GS=null;document.getElementById('coachInput').value='';gsView();document.getElementById('coachInput').focus();}
+function gsLogGrowth(rep){
+  const answers=GS.turns.filter(t=>t.role==='user').map(t=>t.text).join(' ');
+  const day=todayStr();
+  if(S.lastDay!==day){const y=new Date(Date.now()-864e5).toISOString().slice(0,10);S.streak=(S.lastDay===y)?S.streak+1:1;S.lastDay=day;}
+  S.sessions++;
+  S.fwCounts[GS.method.fw]=(S.fwCounts[GS.method.fw]||0)+1;
+  S.framedSessions=(S.framedSessions||0)+1;
+  const met=sessionMetrics({answer:answers,final:'',frame:GS.topic,fwId:GS.method.fw,action:''});
+  const add=(k,d)=>{S.stats[k]=(S.stats[k]||0)+d;};
+  add('essence',met.essence?3:1); add('logic',met.leap?0:3); add('meta',met.counter?3:1); add('learning',2);
+  const total=GS_AXES.reduce((s,k)=>s+(Number(rep.scores?.[k])||0),0);   // 0~60
+  S.xp+=Math.round(12+total/60*40);                                       // 12~52 (평가 점수에 비례)
+  S.history=S.history||[];
+  S.history.push({day,n:S.sessions,stats:{...S.stats},metrics:met});
+  if(S.history.length>120)S.history=S.history.slice(-120);
+  save();renderHome();
+}
+
 let coachMode='socratic';
 function renderCoach(){
   document.getElementById('coachChips').innerHTML=COACH_EXAMPLES.map(e=>`<button class="chip" data-ex="${e}">${e}</button>`).join('');
   document.getElementById('coachChips').onclick=e=>{const b=e.target.closest('.chip');if(b){document.getElementById('coachInput').value=b.dataset.ex;doCoach()}};
   document.getElementById('coachBtn').onclick=doCoach;
-  document.getElementById('coachInput').onkeydown=e=>{if(e.key==='Enter')doCoach()};
+  document.getElementById('coachInput').onkeydown=e=>{if(e.key==='Enter'){coachMode==='guide'?null:doCoach();}};
   document.getElementById('coachMode').onclick=e=>{const b=e.target.closest('button');if(!b)return;
     coachMode=b.dataset.mode;document.querySelectorAll('#coachMode button').forEach(x=>x.classList.toggle('active',x===b));
-    document.getElementById('coachInput').placeholder=coachMode==='debate'?'주장을 입력하세요 (AI가 여러 입장에서 공격)':'고민을 입력하세요 (AI가 질문으로 안내)';};
+    const guide=coachMode==='guide';
+    document.getElementById('coachBtn').style.display=guide?'none':'';
+    document.getElementById('coachChips').style.display=guide?'none':'';
+    document.getElementById('coachInput').placeholder=guide?'훈련할 주제·고민을 적으세요 (사고법은 아래에서 선택)':(coachMode==='debate'?'주장을 입력하세요 (AI가 여러 입장에서 공격)':'고민을 입력하세요 (AI가 질문으로 안내)');
+    if(guide){GS=null;gsView();}else{document.getElementById('coachOut').innerHTML='';}};
   const cb=document.getElementById('coachAiBadge');cb.textContent=providerName();cb.style.display=hasAI()?'inline-block':'none';
 }
 async function doCoach(){
+  if(coachMode==='guide')return;
   const v=document.getElementById('coachInput').value.trim();if(!v)return;
   const out=document.getElementById('coachOut');
   out.innerHTML=`<div class="qitem"><div class="thinking"><span class="d"></span> AI가 ${coachMode==='debate'?'당신의 주장을 공격':'파고들 질문을'} 준비 중...</div></div>`;
