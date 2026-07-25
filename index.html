@@ -1096,7 +1096,7 @@ function providerName(){return curBackend()?'Gemini · 프록시':'Gemini'}
 const hasAI=()=>!!(curBackend()||curKey().trim());
 
 async function askAI(system,user,opts){
-  const mt=(opts&&opts.max_tokens)||800, back=curBackend();
+  const mt=(opts&&opts.max_tokens)||2048, back=curBackend();   // thinking이 예산을 먹어 답이 잘리던 문제 → 여유 있게
   // 백엔드 프록시 우선 — 키가 서버에 있어 브라우저에 노출되지 않는다
   if(back){
     for(let attempt=0;attempt<2;attempt++){
@@ -1110,10 +1110,13 @@ async function askAI(system,user,opts){
   }
   // 직접 Gemini 호출 (개인 실험용 — 키가 브라우저에 노출됨)
   const key=curKey(),model=curModel();
-  const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,{
+  // thinkingBudget:0 → flash가 답변 대신 '사고'에 예산을 쓰다 잘리는 것 방지. pro가 거부(400)하면 떼고 재시도.
+  const gen={maxOutputTokens:mt,temperature:0.7,thinkingConfig:{thinkingBudget:0}};
+  const call=async cfg=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,{
     method:'POST',headers:{'content-type':'application/json'},
-    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:{maxOutputTokens:mt,temperature:0.7}})
-  });
+    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:user}]}],generationConfig:cfg})});
+  let res=await call(gen);
+  if(res.status===400){const {thinkingConfig,...rest}=gen;res=await call(rest);}
   if(!res.ok)throw new Error('Gemini '+res.status);
   const j=await res.json();
   return ((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||'').join('').trim();
@@ -1554,7 +1557,8 @@ async function dnaAiSummary(G){
   try{
     const sys='너는 THINK OS의 사고 분석가다. 아래 측정 지표를 바탕으로 격려가 아니라 날카롭고 구체적인 3~4문장 총평을 한국어로 써라. 강점을 어떻게 무기화하고 약점을 어떻게 보완할지 실전 조언 위주로. 지표 수치를 근거로 인용하라.';
     const usr=`총 ${G.n}회 훈련\n본질 도달률: ${p(m.essenceRate)}\n반례 고려율: ${p(m.counterRate)}\n논리적 비약: ${p(m.leapRate)}\n평균 사고 깊이: ${m.depth==null?'—':'Lv'+depthToLv(m.depth)}\n실행 완료율: ${p(m.execRate)}\n원칙 재사용률: ${p(m.reuseRate)}\n의사결정: 구조·데이터 ${G.decision?G.decision.analytic:'—'}% / 발상·직관 ${G.decision?G.decision.intuitive:'—'}%`;
-    const txt=await askClaude(sys,usr,{max_tokens:400});
+    const txt=await askClaude(sys,usr,{max_tokens:1200});
+    if(!txt.trim())throw new Error('empty');
     out.innerHTML=`<div class="dna-sum" style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px">${txt.replace(/\n/g,'<br>')}</div>`;
   }catch(e){out.innerHTML=`<p class="footnote">AI 총평 생성 실패 — 위 측정 지표를 참고하세요.</p>`}
 }

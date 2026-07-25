@@ -64,16 +64,18 @@ class handler(BaseHTTPRequestHandler):
 
         payload = {
             "contents": [{"role": "user", "parts": [{"text": body.get("user", "")}]}],
-            "generationConfig": {"maxOutputTokens": int(body.get("max_tokens", 800)),
-                                 "temperature": 0.7},
+            # thinkingBudget:0 → flash가 답변 대신 '사고'에 예산을 쓰다 답이 잘리는 것 방지
+            "generationConfig": {"maxOutputTokens": int(body.get("max_tokens", 2048)),
+                                 "temperature": 0.7,
+                                 "thinkingConfig": {"thinkingBudget": 0}},
         }
         sys_prompt = (body.get("system") or "").strip()
         if sys_prompt:   # 빈 systemInstruction은 Gemini가 거부할 수 있어 생략
             payload["systemInstruction"] = {"parts": [{"text": sys_prompt}]}
 
         model = _RESOLVED.get("m") or os.environ.get("THINKOS_GEMINI_MODEL", "gemini-flash-latest")
-        last = ""
-        for attempt in range(2):
+        last, tried_discovery, stripped_thinking = "", False, False
+        for _ in range(4):
             try:
                 data = _generate(key, model, payload)
                 _RESOLVED["m"] = model
@@ -85,7 +87,8 @@ class handler(BaseHTTPRequestHandler):
                     last = e.read().decode()[:500]
                 except Exception:
                     last = ""
-                if e.code == 404 and attempt == 0:   # 모델 지원 종료 → 자동 탐색 후 재시도
+                if e.code == 404 and not tried_discovery:   # 모델 지원 종료 → 자동 탐색 후 재시도
+                    tried_discovery = True
                     try:
                         pick = _best_model(_list_models(key))
                         if pick and pick != model:
@@ -93,7 +96,14 @@ class handler(BaseHTTPRequestHandler):
                             continue
                     except Exception:
                         pass
+                # pro 등 thinking 필수 모델은 thinkingBudget:0을 400으로 거부 → 떼고 재시도
+                if e.code == 400 and not stripped_thinking and \
+                        "thinkingConfig" in payload["generationConfig"]:
+                    stripped_thinking = True
+                    payload["generationConfig"].pop("thinkingConfig", None)
+                    continue
                 return self._send(502, {"error": "llm_error", "status": e.code,
                                         "model": model, "detail": last})
             except Exception as e:
                 return self._send(502, {"error": "llm_error", "detail": str(e)[:300]})
+        return self._send(502, {"error": "llm_error", "detail": "no usable model"})

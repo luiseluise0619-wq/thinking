@@ -36,12 +36,14 @@ export async function onRequestPost({ request, env }) {
 
   const payload = {
     contents: [{ role: "user", parts: [{ text: body.user || "" }] }],
-    generationConfig: { maxOutputTokens: body.max_tokens || 800, temperature: 0.7 },
+    // thinkingBudget:0 → flash가 답변 대신 '사고'에 예산을 쓰다 답이 잘리는 것 방지
+    generationConfig: { maxOutputTokens: body.max_tokens || 2048, temperature: 0.7, thinkingConfig: { thinkingBudget: 0 } },
   };
   if ((body.system || "").trim()) payload.systemInstruction = { parts: [{ text: body.system }] };
 
   let model = env.THINKOS_GEMINI_MODEL || "gemini-flash-latest";
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let triedDiscovery = false, strippedThinking = false;
+  for (let attempt = 0; attempt < 4; attempt++) {
     const res = await generate(key, model, payload);
     if (res.ok) {
       const data = await res.json();
@@ -49,9 +51,16 @@ export async function onRequestPost({ request, env }) {
       return json({ text, provider: "gemini", model });
     }
     let detail = ""; try { detail = (await res.text()).slice(0, 500); } catch {}
-    if (res.status === 404 && attempt === 0) {   // 모델 지원 종료 → 자동 탐색
+    if (res.status === 404 && !triedDiscovery) {   // 모델 지원 종료 → 자동 탐색
+      triedDiscovery = true;
       const pick = bestModel(await listModels(key));
       if (pick && pick !== model) { model = pick; continue; }
+    }
+    // pro 등 thinking 필수 모델은 thinkingBudget:0을 400으로 거부 → 떼고 재시도
+    if (res.status === 400 && !strippedThinking && payload.generationConfig.thinkingConfig) {
+      strippedThinking = true;
+      delete payload.generationConfig.thinkingConfig;
+      continue;
     }
     return json({ error: "llm_error", status: res.status, model, detail }, 502);
   }

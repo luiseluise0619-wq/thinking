@@ -39,7 +39,7 @@ def has_key() -> bool:
     return provider() is not None
 
 
-async def complete(system: str, user: str, *, max_tokens: int = 900,
+async def complete(system: str, user: str, *, max_tokens: int = 2048,
                    model: str | None = None) -> str:
     """Gemini 호출. 오류는 그대로 raise해 상위에서 규칙 기반으로 폴백하게 한다."""
     key = os.getenv("GEMINI_API_KEY")
@@ -47,16 +47,20 @@ async def complete(system: str, user: str, *, max_tokens: int = 900,
         raise RuntimeError("no_api_key")
     body = {
         "contents": [{"role": "user", "parts": [{"text": user}]}],
-        "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.7},
+        # thinkingBudget:0 → flash가 답변 대신 '사고'에 예산을 쓰다 답이 잘리는 것 방지
+        "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.7,
+                             "thinkingConfig": {"thinkingBudget": 0}},
     }
     if (system or "").strip():   # 빈 systemInstruction은 Gemini가 거부할 수 있어 생략
         body["systemInstruction"] = {"parts": [{"text": system}]}
     chosen = _RESOLVED.get("m") or model or DEFAULT_GEMINI
+    tried_discovery = stripped_thinking = False
     async with httpx.AsyncClient(timeout=60) as client:
-        for attempt in range(2):
+        for _ in range(4):
             r = await client.post(GEMINI_URL.format(model=chosen), params={"key": key},
                                   headers={"content-type": "application/json"}, json=body)
-            if r.status_code == 404 and attempt == 0:   # 모델 지원 종료 → 자동 탐색 후 재시도
+            if r.status_code == 404 and not tried_discovery:   # 모델 지원 종료 → 자동 탐색 후 재시도
+                tried_discovery = True
                 try:
                     pick = _best_model(await _list_models(client, key))
                     if pick and pick != chosen:
@@ -64,6 +68,12 @@ async def complete(system: str, user: str, *, max_tokens: int = 900,
                         continue
                 except Exception:
                     pass
+            # pro 등 thinking 필수 모델은 thinkingBudget:0을 400으로 거부 → 떼고 재시도
+            if r.status_code == 400 and not stripped_thinking and \
+                    "thinkingConfig" in body["generationConfig"]:
+                stripped_thinking = True
+                body["generationConfig"].pop("thinkingConfig", None)
+                continue
             if r.status_code >= 400:
                 raise RuntimeError(f"gemini {r.status_code} (model={chosen}): {r.text[:300]}")
             data = r.json()
