@@ -233,6 +233,34 @@
   .gs-score .sr{grid-column:1/-1;color:var(--muted2);font-size:12.5px;line-height:1.5;margin:0 0 10px}
   .gs-mission p{background:var(--panel2);border:1px dashed var(--line2);border-radius:var(--r);padding:14px;font-size:14.5px;line-height:1.6;margin:0}
 
+  /* 사고력 진단 */
+  .as-box{max-width:560px}
+  .as-items{display:grid;gap:16px;margin-bottom:18px}
+  .as-q{font-family:var(--serif);font-size:16px;font-weight:500;line-height:1.5;margin-bottom:9px}
+  .as-q .as-n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:var(--rs);background:var(--acc);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;margin-right:9px;vertical-align:middle}
+  .as-a{width:100%;min-height:66px;background:var(--bg2);border:1px solid var(--line2);border-radius:var(--r);padding:11px;font-size:14.5px;line-height:1.6;color:var(--txt);resize:vertical}
+  .as-actions{display:flex;justify-content:flex-end;gap:10px}
+  .as-index{text-align:center;padding:12px 0 18px}
+  .as-idx-num{font-family:var(--serif);font-size:52px;font-weight:700;line-height:1;color:var(--acc2)}
+  .as-idx-num small{font-size:20px;color:var(--muted2);font-weight:400}
+  .as-idx-lbl{font-family:var(--mono);font-size:12px;letter-spacing:1px;color:var(--muted);margin-top:6px;text-transform:uppercase}
+  .as-bars{display:grid;gap:9px}
+  .as-bar{display:grid;grid-template-columns:96px 1fr auto;align-items:center;gap:11px}
+  .as-bar .bn{font-size:12.5px;color:var(--muted)}
+  .as-bar .bb{height:8px;border-radius:2px;background:var(--panel2);overflow:hidden}
+  .as-bar .bb i{display:block;height:100%;background:var(--acc2);border-radius:2px}
+  .as-bar .bv{font-family:var(--mono);font-size:12px;min-width:56px;text-align:right}
+  .as-delta{font-family:var(--mono);font-size:11px;font-weight:700}
+  .as-delta.up{color:var(--good)} .as-delta.dn{color:var(--acc)} .as-delta.flat{color:var(--muted2)}
+  .as-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .as-card.col{flex-direction:column;align-items:stretch}
+  .as-card h3{font-family:var(--serif);font-size:18px}
+  .as-card-top{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%}
+  .as-minis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}
+  @media(max-width:560px){.as-minis{grid-template-columns:1fr 1fr}}
+  .as-mini{background:var(--panel2);border:1px solid var(--line);border-radius:var(--rs);padding:9px 11px;display:flex;flex-direction:column;gap:3px}
+  .as-mini span{font-size:11px;color:var(--muted2)} .as-mini b{font-family:var(--serif);font-size:17px}
+
   .levels{display:grid;gap:11px}
   .lvl-row{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
   .lvl-row.cur{border-color:var(--acc);box-shadow:inset 2px 0 0 var(--acc)}
@@ -492,6 +520,8 @@
 </div>
 
 <!-- FEEDBACK / 실행 회고 MODAL -->
+<div class="modal" id="assessModal" role="dialog" aria-modal="true" aria-label="사고력 진단"></div>
+
 <div class="modal" id="feedbackModal" role="dialog" aria-modal="true" aria-label="실행 회고">
   <div class="box">
     <button class="icon-btn close" onclick="closeFeedback()">✕</button>
@@ -712,6 +742,7 @@ const DEFAULT = {
   framedSessions:0,     // 문제 정의 단계를 채운 횟수
   actionSessions:0,     // 실행 계획을 남긴 횟수
   actions:[],           // 실행 약속 → 결과 → 교훈 (피드백 루프)
+  assessments:[],       // 사고력 사전/사후 진단 (효과 검증)
   seq:0,
   onboarded:false,      // 첫 실행 안내 여부
   settings:{provider:'gemini', keys:{gemini:''}, models:{gemini:'gemini-flash-latest'}, backendUrl:''}
@@ -721,7 +752,7 @@ function load(){
   try{const r=JSON.parse(localStorage.getItem('thinkos2'));
     if(!r)return structuredClone(DEFAULT);
     const s={...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},
-      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[]};
+      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[],assessments:r.assessments||[]};
     // 구버전 원칙({p,src,day})을 진화형 모델로 정규화
     s.wisdom=s.wisdom.map(w=>w.text!==undefined?w:{id:(w.id||++s.seq),text:w.p||w.text||'',src:w.src||'',day:w.day||'',cases:w.cases||[],revisions:w.revisions||[]});
     // 설정 정규화 — Gemini 전용
@@ -1415,6 +1446,121 @@ function grantGains(){
    COACH (socratic + debate)
 ============================================================ */
 /* ============================================================
+   사고력 진단 (효과 검증) — 사전/사후 동일 문항으로 실제 변화를 측정
+   결정론적 규칙 채점(키 없이도 재현·비교 가능)이 핵심.
+   "사고가 는다"를 주장이 아니라 데이터로 만든다.
+============================================================ */
+const ASSESS_ITEMS=[
+  {id:1,q:'"가격을 낮추면 매출이 오른다." 이 주장을 당신은 어떻게 <b>검증</b>하겠는가?'},
+  {id:2,q:'3주째 지키지 못하고 있는 습관이 하나 있다. 그 <b>진짜 원인</b>을 어떻게 찾겠는가?'},
+  {id:3,q:'"AI가 곧 대부분의 지식노동을 대체한다." 이 말에 당신은 어떻게 <b>반응</b>하겠는가?'},
+];
+// 6개 사고 능력을 텍스트 신호로 감지 (결정론적). 사전/사후 동일 기준 → 비교 가능
+const ASSESS_DIMS=[
+  {key:'반증 사고', re:/틀렸|틀리면|반증|아니라면|거짓이라면|무엇을 보면|무엇을 확인|검증|테스트|실험|가정.*깨/},
+  {key:'반례 고려', re:/반례|예외|들어맞지 않|안 되는 경우|반대 사례|그러나|하지만|반대로|아닐 수도|한계/},
+  {key:'근거·논리', re:/데이터|통계|연구|사례|수치|%|실제로|관찰|실험|왜냐|때문|근거|이유는|따라서/},
+  {key:'대안 탐색', re:/대신|다른 (방법|길|선택|관점|각도)|제3|여러 (가지|방법)|비교|선택지|옵션|한편/},
+  {key:'2차 사고', re:/그다음|그 다음|이후|장기(적)?|결과적|부작용|연쇄|파급|2차|나중|반작용|역효과/},
+  {key:'본질·재정의',re:/진짜 (원인|문제|목적)|근본|메커니즘|재정의|정의(부터|를)|핵심은|본질|구조적/},
+];
+function scoreAssessment(answers){
+  const valid=answers.map(a=>(a||'').trim());
+  const n=ASSESS_ITEMS.length;
+  const dims={};
+  ASSESS_DIMS.forEach(d=>{
+    let hits=0;
+    valid.forEach(a=>{ if(a.length>=8 && d.re.test(a)) hits++; });
+    dims[d.key]=Math.round(hits/n*100);
+  });
+  const index=Math.round(ASSESS_DIMS.reduce((s,d)=>s+dims[d.key],0)/ASSESS_DIMS.length);
+  return {index,dims};
+}
+// 진단 시점 판단: 사전 없으면 baseline, 마지막 진단 후 7회+ 훈련했으면 retest 권유
+function assessDue(){
+  const A=S.assessments||[];
+  if(!A.length) return 'baseline';
+  const last=A[A.length-1];
+  if((S.sessions||0)-(last.sessions||0)>=7) return 'retest';
+  return null;
+}
+let ASV=null;   // 진단 진행 상태
+function openAssess(){
+  const A=S.assessments||[];
+  const isBaseline=!A.length;
+  ASV={answers:ASSESS_ITEMS.map(()=>''),};
+  const m=document.getElementById('assessModal');
+  m.innerHTML=`<div class="box as-box">
+    <p class="page-kicker" style="margin-bottom:8px">${isBaseline?'사전 진단 · 기준선 측정':'사후 진단 · 변화 측정'}</p>
+    <h2 style="font-family:var(--serif);font-size:23px;margin:0 0 6px;line-height:1.35">사고력 진단</h2>
+    <p class="hint" style="font-size:13.5px;color:var(--muted);margin:0 0 18px;line-height:1.6">아래 ${ASSESS_ITEMS.length}개 상황에 <b>떠오르는 대로</b> 답하세요. 정답은 없습니다 — 당신이 <b>어떻게 접근하는지</b>를 측정합니다. ${isBaseline?'지금 값이 기준선이 되고, 훈련 뒤 다시 재면 실제 변화가 보입니다.':'같은 문항으로 다시 재서 사전 대비 변화를 봅니다.'}</p>
+    <div class="as-items">${ASSESS_ITEMS.map((it,i)=>`
+      <div class="as-item"><div class="as-q"><span class="as-n">${i+1}</span>${it.q}</div>
+      <textarea class="as-a" data-i="${i}" placeholder="당신의 접근을 적어보세요..."></textarea></div>`).join('')}</div>
+    <div class="as-actions"><button class="btn ghost sm" onclick="closeAssess()">나중에</button>
+      <button class="btn" onclick="submitAssess()">제출하고 결과 보기 →</button></div>
+  </div>`;
+  m.classList.add('open');
+  m.querySelectorAll('.as-a').forEach(t=>t.oninput=e=>ASV.answers[+e.target.dataset.i]=e.target.value);
+}
+function closeAssess(){document.getElementById('assessModal').classList.remove('open');}
+function submitAssess(){
+  const answers=ASV.answers.map(a=>(a||'').trim());
+  if(answers.filter(a=>a.length>=8).length<ASSESS_ITEMS.length){
+    if(!confirm('일부 답이 비어 있습니다. 빈 답은 0점으로 채점됩니다. 그래도 제출할까요?'))return;
+  }
+  const r=scoreAssessment(answers);
+  const rec={day:todayStr(),sessions:S.sessions||0,index:r.index,dims:r.dims,answers};
+  S.assessments=S.assessments||[]; S.assessments.push(rec); save();
+  showAssessResult();
+}
+function showAssessResult(){
+  const A=S.assessments; const cur=A[A.length-1]; const base=A[0];
+  const m=document.getElementById('assessModal');
+  const isFirst=A.length===1;
+  const bars=ASSESS_DIMS.map(d=>{
+    const now=cur.dims[d.key], was=base.dims[d.key];
+    const delta=now-was;
+    const dtag=isFirst?'':` <span class="as-delta ${delta>0?'up':delta<0?'dn':'flat'}">${delta>0?'+':''}${delta}</span>`;
+    return `<div class="as-bar"><span class="bn">${d.key}</span><span class="bb"><i style="width:${now}%"></i></span><span class="bv">${now}${dtag}</span></div>`;
+  }).join('');
+  const idxDelta=cur.index-base.index;
+  m.innerHTML=`<div class="box as-box">
+    <p class="page-kicker" style="margin-bottom:8px">${isFirst?'기준선 기록됨':`${A.length}번째 진단 · ${base.day} 대비`}</p>
+    <div class="as-index"><div class="as-idx-num">${cur.index}<small>/100</small></div>
+      <div class="as-idx-lbl">사고력 지수${isFirst?'':` <span class="as-delta ${idxDelta>0?'up':idxDelta<0?'dn':'flat'}" style="font-size:15px">${idxDelta>0?'+':''}${idxDelta}</span>`}</div></div>
+    <div class="as-bars">${bars}</div>
+    <p class="hint" style="font-size:12.5px;color:var(--muted2);margin:14px 0 0;line-height:1.6">${isFirst
+      ? '이 값이 당신의 <b>기준선</b>입니다. 훈련을 쌓은 뒤 다시 진단하면, 각 능력이 실제로 얼마나 변했는지 숫자로 확인할 수 있습니다.'
+      : (idxDelta>0?`사전 대비 <b>사고력 지수 +${idxDelta}</b>. 훈련이 실제 접근 방식에 반영되고 있습니다.`:idxDelta<0?'이번엔 낮게 나왔습니다. 한 번의 측정은 컨디션을 타니, 며칠 더 훈련 후 다시 재보세요.':'큰 변화가 없습니다. 사고법을 더 의식적으로 적용해보세요.')}
+      <br>측정은 답변 속 <b>사고 행동</b>(반증·반례·근거·대안·2차·본질)의 등장 여부로 채점합니다 — 사전·사후 동일 기준.</p>
+    <div class="as-actions"><button class="btn" onclick="closeAssess();renderYou()">닫기</button></div>
+  </div>`;
+}
+// 성장 페이지용 진단 섹션
+function assessSectionHtml(){
+  const A=S.assessments||[]; const due=assessDue();
+  if(!A.length){
+    return `<div class="as-card"><div>
+      <h3 style="margin:0 0 6px">사고력, 실제로 늘고 있나?</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:0;line-height:1.6">지금 <b>사전 진단</b>으로 기준선을 재두면, 훈련 뒤 사고력이 <b>실제로</b> 변했는지 숫자로 증명됩니다.</p>
+    </div><button class="btn" onclick="openAssess()">사전 진단 · 3분</button></div>`;
+  }
+  const base=A[0], cur=A[A.length-1];
+  const idxDelta=cur.index-base.index;
+  const mini=ASSESS_DIMS.map(d=>`<div class="as-mini"><span>${d.key}</span><b>${cur.dims[d.key]}${A.length>1?` <span class="as-delta ${cur.dims[d.key]-base.dims[d.key]>0?'up':cur.dims[d.key]-base.dims[d.key]<0?'dn':'flat'}">${cur.dims[d.key]-base.dims[d.key]>0?'+':''}${cur.dims[d.key]-base.dims[d.key]}</span>`:''}</b></div>`).join('');
+  return `<div class="as-card col">
+    <div class="as-card-top">
+      <div><div class="as-idx-num" style="font-size:34px">${cur.index}<small>/100</small></div>
+        <div style="color:var(--muted);font-size:12px;font-family:var(--mono)">사고력 지수${A.length>1?` · 사전 ${base.index} → ${cur.index} <span class="as-delta ${idxDelta>0?'up':idxDelta<0?'dn':'flat'}">${idxDelta>0?'+':''}${idxDelta}</span>`:' · 기준선'}</div></div>
+      <button class="btn ${due==='retest'?'':'ghost'} sm" onclick="openAssess()">${due==='retest'?'사후 진단 하기':'다시 진단'}</button>
+    </div>
+    <div class="as-minis">${mini}</div>
+    ${due==='retest'?'<p class="footnote" style="color:var(--gold)">훈련이 충분히 쌓였습니다 — 지금이 사후 진단으로 변화를 확인할 때입니다.</p>':''}
+  </div>`;
+}
+
+/* ============================================================
    가이드 세션 — 한 번에 사고법 하나로 끝까지 이끄는 턴제 코치
    ① 사고법 소개 → ② 질문 하나씩 → ③ 분석 → ④ 현실 비교 → ⑤ 6축 채점 → ⑥ 미션
    (AI 없으면 규칙 기반으로 동작)
@@ -1689,6 +1835,10 @@ function renderYou(){
         <h1 class="q" style="font-size:clamp(26px,4.6vw,40px)">아직 당신의 사고 지문이 없습니다</h1>
         <p class="why">며칠만 훈련을 쌓으면, 당신이 <b>어떻게 생각하는 사람</b>인지 — 사고 깊이·본질 도달률·논리 견고성이 실제 데이터로 드러납니다.</p>
         <div class="cta-row"><button class="btn" onclick="go('routine')">첫 훈련 시작</button></div>
+      </div>
+      <div class="section" style="margin-top:8px">
+        <div class="section-head"><h3>사고력 진단</h3><span class="note">훈련 전에 기준선을 재두세요</span></div>
+        ${assessSectionHtml()}
       </div>`;
     return;
   }
@@ -1774,6 +1924,11 @@ function renderYou(){
         ${hasAI()?`<button class="btn ghost sm" id="dnaAiBtn">AI 심층 총평</button><div id="dnaAiOut"></div>`:''}
       </div>
       <div class="radar-wrap"><svg id="radar" width="230" height="200" viewBox="0 0 230 200"></svg></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>사고력 진단</h3><span class="note">사전 → 사후 · 실제 변화 측정</span></div>
+      ${assessSectionHtml()}
     </div>
 
     <div class="section">
