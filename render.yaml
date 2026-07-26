@@ -1,0 +1,25 @@
+# Render Blueprint — 원클릭 배포
+# render.com → New → Blueprint → 이 리포 선택 → Apply
+# (API + 프론트를 한 컨테이너가 서빙. 프론트는 자동으로 같은 서버의 프록시를 쓴다)
+services:
+  - type: web
+    name: think-os
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free                     # 파일럿 데이터를 영구 보존하려면 아래 disk 주석 해제(+유료 플랜)
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: GEMINI_API_KEY        # Gemini 키. 비우면 규칙 기반으로 동작(앱은 안 깨짐)
+        sync: false
+      - key: THINKOS_SECRET        # 로그인 토큰 서명 비밀키 — 자동 생성
+        generateValue: true
+      - key: THINKOS_ADMIN_SECRET  # /admin/cohort 접근용 — 자동 생성
+        generateValue: true
+      - key: THINKOS_ALLOWED_ORIGINS
+        value: "*"                 # 프로덕션에선 실제 도메인만 권장
+    # 영구 SQLite(파일럿 30일 데이터 유실 방지) — 유료 플랜 필요
+    # disk:
+    #   name: data
+    #   mountPath: /data
+    #   sizeGB: 1
