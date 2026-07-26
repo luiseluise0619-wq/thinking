@@ -1301,9 +1301,169 @@ function modeToggle(cur){
     <button class="${cur==='quick'?'active':''}" onclick="renderQuick()">빠른 판단 · 5분</button>
     <button class="${cur==='deep'?'active':''}" onclick="renderRoutine()">깊은 훈련 · 선택</button></div>`;
 }
+/* ===== 깊은 훈련 — AI가 계속 물으며 근본까지 좁혀 들어간 뒤 최종 평가 ===== */
+let DR=null;
 function renderRoutine(){
-  R={mode:'deep',step:0,problem:dailyProblem(),frame:'',answer:'',fwId:null,atk:null,action:'',final:'',principle:''};
-  stepView();
+  DR={problem:dailyProblem(),answer:'',turns:[],phase:'intro',thinking:false,report:null,target:randInt(4,6)};
+  drView();
+}
+function drView(){
+  const b=document.getElementById('rBody'), steps=document.getElementById('rSteps'), m=DR;
+  if(m.phase==='intro'){
+    steps.innerHTML=[0,1,2].map(()=>`<span class="s"></span>`).join('');
+    b.innerHTML=modeToggle('deep')+`
+      <div class="steplbl">깊은 훈련 · 근본까지 파고들기</div>
+      <div class="stepname">🧱 오늘의 질문에서 시작한다</div>
+      <p class="prob" style="font-size:21px">${m.problem}</p>
+      <p style="color:var(--muted);margin:0 0 12px;font-size:13.5px">먼저 <b>지금 떠오르는 생각</b>을 솔직하게. AI가 여기서부터 <b>계속 더 깊이</b> 물어 근본까지 데려간다.</p>
+      <textarea id="drA0" class="mini" placeholder="이 질문에 대한 내 생각과 근거...">${m.answer}</textarea>
+      <div class="flow-actions"><button class="btn wide" onclick="drStart()">파고들기 시작 →</button></div>`;
+    document.getElementById('drA0')?.focus();
+    return;
+  }
+  const answered=m.turns.filter(t=>t.role==='user').length;
+  steps.innerHTML=[0,1,2].map(i=>`<span class="s ${(answered/(m.target||5))>=i/2?'on':''}"></span>`).join('');
+  let h=`<div class="steplbl">깊은 훈련 · 근본까지 <span style="color:var(--muted2)">${Math.min(answered,m.target)}/${m.target}</span></div>
+    <p class="prob" style="font-size:18px;margin-bottom:14px">${m.problem}</p>
+    <div class="gs-thread">
+      <div class="gs-a" style="margin-left:0;background:var(--panel2);color:var(--txt);border:1px solid var(--line)">${escapeHtml(m.answer)}</div>`;
+  m.turns.forEach(t=>{ h+= t.role==='ai'
+    ? `<div class="gs-q"><span class="gs-qn">Q${t.n}</span>${t.text}</div>`
+    : `<div class="gs-a">${escapeHtml(t.text)}</div>`; });
+  h+=`</div>`;
+  if(m.phase==='dialogue'){
+    h+= m.thinking
+      ? `<div class="thinking"><span class="d"></span> 더 근본을 파고들 질문 준비 중...</div>`
+      : `<textarea id="drAns" class="gs-input" placeholder="더 깊이 생각해 답해보세요... (⌘/Ctrl+Enter)"></textarea>
+         <div class="gs-actions"><button class="btn" onclick="drAnswer()">답하고 더 깊이 →</button>
+         ${answered>=3?`<button class="btn ghost sm" onclick="drFinish()">여기서 평가받기</button>`:''}</div>`;
+  }else if(m.phase==='report'){
+    h+= m.report ? drReportHtml(m.report) : `<div class="thinking"><span class="d"></span> AI가 근본 도달을 평가하는 중...</div>`;
+  }
+  b.innerHTML=h;
+  const ta=document.getElementById('drAns'); if(ta){ta.focus();ta.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))drAnswer();};}
+}
+async function drStart(){
+  DR.answer=(document.getElementById('drA0').value||'').trim();
+  if(DR.answer.length<2){document.getElementById('drA0').focus();return;}
+  DR.phase='dialogue';DR.thinking=true;drView();
+  DR.turns.push({role:'ai',n:1,text:await drNextQuestion()});DR.thinking=false;drView();
+}
+async function drNextQuestion(){
+  const asked=DR.turns.filter(t=>t.role==='ai').length;
+  if(hasAI()){
+    try{
+      const sys=`너는 사용자를 '근본(root)'까지 데려가는 한국어 사고 코치다. 절대 답·해결책을 주지 말고 질문 하나만 한다. 지금까지의 대화를 보고, 사용자의 마지막 답보다 '한 층 더 근본적인' 것을 캐묻는 질문을 던져라 — 표면의 이유에서 그 밑의 이유로, 통념에서 더 못 쪼갤 사실로 좁혀 들어간다. 이미 나온 것을 반복하지 말고 매번 더 깊이 내려간다.
+출력: 순수 한국어 질문 한 문장, 물음표로 끝. 영어·번호·별표·머리말 금지.`;
+      const convo=`문제: ${DR.problem}\n처음 내 생각: ${DR.answer}\n`+DR.turns.map(t=>t.role==='ai'?`코치: ${t.text}`:`나: ${t.text}`).join('\n')+`\n\n한 층 더 근본으로 내려가는 다음 질문 하나만:`;
+      const q=splitLines(await askAI(sys,convo,{max_tokens:1024}),1)[0];
+      if(q)return q;
+    }catch(e){}
+  }
+  const bank=[
+    `그렇게 생각한 <b>이유</b>는 무엇인가요? 한 겹 아래엔 무엇이 있죠?`,
+    `그 이유가 사실이라고 어떻게 <b>확신</b>하나요? 근거는요?`,
+    `그것마저 걷어내면, <b>더 못 쪼갤 근본 사실</b>은 무엇인가요?`,
+    `그 근본이 <b>틀렸다면</b> 무엇이 먼저 무너지나요?`,
+    `그렇다면 진짜 문제(또는 답)는 처음과 <b>어떻게 달라지나요</b>?`,
+    `이 근본 위에서, 지금 당장 바꿀 수 있는 <b>가장 작은 것</b>은?`,
+  ];
+  return bank[Math.min(asked,bank.length-1)];
+}
+async function drAnswer(){
+  const ta=document.getElementById('drAns');const v=(ta?.value||'').trim();
+  if(!v){ta?.focus();return;}
+  DR.turns.push({role:'user',text:v});
+  const answered=DR.turns.filter(t=>t.role==='user').length;
+  if(answered>=DR.target)return drFinish();
+  DR.thinking=true;drView();
+  DR.turns.push({role:'ai',n:answered+1,text:await drNextQuestion()});DR.thinking=false;drView();
+}
+async function drFinish(){
+  DR.phase='report';DR.report=null;drView();
+  DR.report=await drBuildReport();drView();
+}
+async function drBuildReport(){
+  const answers=[DR.answer,...DR.turns.filter(t=>t.role==='user').map(t=>t.text)].join(' ');
+  if(hasAI()){
+    try{
+      const sys=`너는 사고 코치다. 아래 '근본까지 파고들기' 세션 전체를 평가한다. 반드시 유효한 JSON 하나만 출력하고 그 밖의 텍스트는 절대 쓰지 마라. 모든 값 한국어.
+{"root":"사용자가 도달한(또는 놓친) 진짜 근본·본질을 한 문장으로",
+"reached":"사용자가 스스로 도달한 지점","missed":"더 내려갔어야 할 지점",
+"scores":{"근본 도달":0,"논리성":0,"반례 고려":0,"구체성":0},
+"reasons":{"근본 도달":"","논리성":"","반례 고려":"","구체성":""},
+"principle":"이 세션에서 뽑을 만한 한 줄 원칙(사용자 관점, 명령형)",
+"next":"다음에 더 깊이 가기 위한 한 가지"}
+점수는 0~10 정수. 무조건 틀렸다 하지 말고 도달한 곳은 인정하라.`;
+      const usr=`문제: ${DR.problem}\n처음 생각: ${DR.answer}\n대화:\n`+DR.turns.map(t=>t.role==='ai'?`Q: ${t.text}`:`A: ${t.text}`).join('\n');
+      const j=gsParseJson(await askAI(sys,usr,{max_tokens:2048}));
+      if(j&&j.scores)return {...j,ai:true};
+    }catch(e){}
+  }
+  return drRuleReport(answers);
+}
+function drRuleReport(answers){
+  const a=analyzeText(answers),pick=(c,hi,lo)=>c?hi:lo;
+  return {ai:false,
+    root:'표면의 이유 밑에 더 근본적인 원인이 있다 — 다음엔 "왜"를 한 번 더 내려가 보라.',
+    reached:'문제를 스스로 다시 들여다보기 시작했습니다.',
+    missed:a.causal?'근본에 근접했으나 검증까지는 덜 갔습니다.':'표면 이유에서 한두 겹 더 내려갈 여지가 있었습니다.',
+    scores:{'근본 도달':pick(a.causal,7,4),'논리성':pick(a.because,7,4),'반례 고려':pick(a.counter,7,3),'구체성':pick(/\d|주|일|명|원|%/.test(answers)||a.words>50,7,4)},
+    reasons:{'근본 도달':a.causal?'근본·구조를 언급했습니다.':'표면 수준에 머문 편입니다.','논리성':a.because?'근거를 붙였습니다.':'근거가 약했습니다.','반례 고려':a.counter?'반례를 떠올렸습니다.':'반대 사례를 덜 봤습니다.','구체성':'검증 가능한 구체가 더 필요합니다.'},
+    principle:'증상이 아니라 원인을 고쳐라.',next:'같은 문제에 "왜"를 한 번 더 던져보라.'};
+}
+function drReportHtml(r){
+  const order=['근본 도달','논리성','반례 고려','구체성'];
+  const total=order.reduce((s,k)=>s+(Math.max(0,Math.min(10,Number(r.scores?.[k])||0))),0);
+  const rows=order.map(k=>{const n=Math.max(0,Math.min(10,Number(r.scores?.[k])||0));const col=n>=7?'var(--good)':n>=4?'var(--gold)':'var(--acc)';
+    return `<div class="gs-score"><span class="sn">${k}</span><span class="sb"><i style="width:${n*10}%;background:${col}"></i></span><span class="sv">${n}/10</span><span class="sr">${r.reasons?.[k]||''}</span></div>`}).join('');
+  return `<div class="gs-report">
+    <div class="gs-sec" style="background:var(--panel2);border-radius:var(--r);padding:14px;border-left:3px solid var(--acc2)">
+      <h4 style="color:var(--acc2)">🧱 도달한 근본</h4><p style="font-family:var(--serif);font-size:17px;line-height:1.5;margin:0">${r.root||'—'}</p></div>
+    <div class="gs-sec"><h4>사고 과정 ${r.ai?'<span class="badge-ai">'+providerName()+'</span>':''}</h4>
+      <div class="gs-ax"><span class="k">스스로 도달</span><span class="v">${r.reached||'—'}</span></div>
+      <div class="gs-ax"><span class="k">더 갈 곳</span><span class="v">${r.missed||'—'}</span></div></div>
+    <div class="gs-sec"><h4>AI 평가 <span class="gs-total">${total}/40</span></h4>${rows}</div>
+    <div class="gs-sec"><h4>💎 원칙으로 남기기</h4>
+      <textarea id="drPrin" class="gs-input" style="min-height:52px">${(r.principle||'').replace(/"/g,'&quot;')}</textarea>
+      <div class="stepname" style="margin:10px 0 4px">🚀 오늘 할 가장 작은 행동 (선택)</div>
+      <textarea id="drAct" class="gs-input" style="min-height:52px" placeholder="예: 관련 자료 10분 읽기 / 한 사람에게 물어보기"></textarea></div>
+    <div class="gs-actions"><button class="btn" onclick="drComplete()">완료 · 성장에 반영 ✓</button></div>
+    ${r.next?`<p class="footnote">다음: ${r.next}</p>`:''}
+  </div>`;
+}
+function drComplete(){
+  const principle=(document.getElementById('drPrin')?.value||'').trim();
+  const action=(document.getElementById('drAct')?.value||'').trim();
+  const day=todayStr();
+  if(S.lastDay!==day){const y=new Date(Date.now()-864e5).toISOString().slice(0,10);S.streak=(S.lastDay===y)?S.streak+1:1;S.lastDay=day;}
+  S.sessions++; S.framedSessions=(S.framedSessions||0)+1;
+  S.fwCounts['first']=(S.fwCounts['first']||0)+1;
+  if(principle)pushWisdom(principle,DR.problem);
+  if(action.length>1){S.actionSessions=(S.actionSessions||0)+1;S.seq=(S.seq||0)+1;
+    S.actions.unshift({id:S.seq,day,problem:DR.problem,text:action,status:'pending',result:'',lesson:''});}
+  const answers=[DR.answer,...DR.turns.filter(t=>t.role==='user').map(t=>t.text)].join(' ');
+  const met=sessionMetrics({answer:answers,final:'',frame:DR.problem,fwId:'first',action});
+  const add=(k,d)=>{S.stats[k]=(S.stats[k]||0)+d;};
+  add('essence',met.essence?3:1);add('logic',met.leap?0:3);add('meta',met.counter?3:1);add('learning',2);if(action.length>1)add('exec',3);
+  const total=['근본 도달','논리성','반례 고려','구체성'].reduce((s,k)=>s+(Number(DR.report?.scores?.[k])||0),0);
+  const xp=Math.round(15+total/40*45);
+  S.xp+=xp;
+  S.history=S.history||[];
+  S.history.push({day,n:S.sessions,stats:{...S.stats},metrics:met});
+  if(S.history.length>120)S.history=S.history.slice(-120);
+  save();renderHome();
+  const c=currentLevel();
+  document.getElementById('rSteps').innerHTML=[0,1,2].map(()=>`<span class="s on"></span>`).join('');
+  document.getElementById('rBody').innerHTML=`<div class="reward">
+    <div class="big">✓</div><h2>근본까지 파고들었다</h2>
+    <p style="color:var(--muted);margin:0">표면이 아니라 뿌리를 봤다. 이 훈련이 사고 깊이를 만든다.</p>
+    <div class="gains"><span class="gain">🔥 ${S.streak}일 연속</span><span class="gain">⭐ <b>+${xp}</b> XP</span>${principle?'<span class="gain">💎 원칙 +1</span>':''}${action.length>1?'<span class="gain">🚀 행동 +1</span>':''}</div>
+    <p style="margin-top:14px;color:var(--muted)">현재 <b style="color:var(--gold)">Lv${c.n} ${c.name}</b></p>
+    <div class="flow-actions" style="justify-content:center;margin-top:16px">
+      <button class="btn ghost sm" onclick="renderRoutine()">한 번 더</button>
+      <button class="btn sm" onclick="go('you')">사고 지문 보기 →</button></div>
+  </div>`;
 }
 /* ---- 빠른 판단 (5분): 오늘의 판단 하나 → 날카로운 질문 하나 → 오늘의 행동 ---- */
 function startQuick(){go('routine');renderQuick();}
@@ -1737,7 +1897,7 @@ async function gsNextQuestion(){
       const sys=`너는 사용자의 사고를 대신하지 않는 한국어 사고 코치다. 오직 '${m.name}' 사고법 하나만 쓴다. 절대 답·해결책·정답을 주지 마라. 사용자가 스스로 더 깊이 생각하게 만드는 질문 '하나'만 한다. ${m.guide}
 출력 규칙(엄격): 순수 한국어 질문 한 문장, 물음표로 끝. 영어·번호·별표·머리말·설명 금지.`;
       const convo=`주제: ${GS.topic}\n`+GS.turns.map(t=>t.role==='ai'?`코치 질문: ${t.text}`:`사용자 답: ${t.text}`).join('\n')+`\n\n위 흐름에서 한 걸음 더 깊이 데려갈 다음 질문 하나만:`;
-      const txt=await askAI(sys,convo,{max_tokens:400});
+      const txt=await askAI(sys,convo,{max_tokens:1024});   // thinking이 예산 먹어도 질문이 안 잘리게 여유
       const q=splitLines(txt,1)[0];
       if(q)return q;
     }catch(e){}
@@ -2067,7 +2227,7 @@ async function dnaAiSummary(G){
   try{
     const sys='너는 THINK OS의 사고 분석가다. 아래 측정 지표를 바탕으로 격려가 아니라 날카롭고 구체적인 3~4문장 총평을 한국어로 써라. 강점을 어떻게 무기화하고 약점을 어떻게 보완할지 실전 조언 위주로. 지표 수치를 근거로 인용하라.';
     const usr=`총 ${G.n}회 훈련\n본질 도달률: ${p(m.essenceRate)}\n반례 고려율: ${p(m.counterRate)}\n논리적 비약: ${p(m.leapRate)}\n평균 사고 깊이: ${m.depth==null?'—':'Lv'+depthToLv(m.depth)}\n실행 완료율: ${p(m.execRate)}\n원칙 재사용률: ${p(m.reuseRate)}\n의사결정: 구조·데이터 ${G.decision?G.decision.analytic:'—'}% / 발상·직관 ${G.decision?G.decision.intuitive:'—'}%`;
-    const txt=await askClaude(sys,usr,{max_tokens:1200});
+    const txt=await askClaude(sys,usr,{max_tokens:2048});
     if(!txt.trim())throw new Error('empty');
     out.innerHTML=`<div class="dna-sum" style="margin-top:12px;border-top:1px solid var(--line2);padding-top:12px">${txt.replace(/\n/g,'<br>')}</div>`;
   }catch(e){out.innerHTML=`<p class="footnote">AI 총평 생성 실패 — 위 측정 지표를 참고하세요.</p>`}
