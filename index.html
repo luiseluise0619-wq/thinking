@@ -291,6 +291,10 @@
   .cog-cell{aspect-ratio:1;background:var(--panel2);border:1px solid var(--line);border-radius:var(--rs);font-size:17px;color:var(--muted);display:grid;place-items:center;font-family:var(--mono)}
   .cog-cell.tgt{color:var(--acc)}
   .cog-cell:active{background:var(--line)}
+  .review-nudge{display:block;width:100%;text-align:left;margin-top:28px;background:var(--panel);border:1px solid var(--acc);border-left:3px solid var(--acc);border-radius:var(--r);padding:14px 16px;transition:.15s}
+  .review-nudge:hover{background:var(--panel2)}
+  .review-nudge b{color:var(--acc)}
+  .review-nudge span{display:block;font-size:12.5px;color:var(--muted2);margin-top:3px}
 
   .levels{display:grid;gap:11px}
   .lvl-row{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
@@ -844,6 +848,7 @@ const DEFAULT = {
   actions:[],           // 실행 약속 → 결과 → 교훈 (피드백 루프)
   assessments:[],       // 사고력 사전/사후 진단 (효과 검증)
   cog:{},               // 인지 드릴 기록 {drillId:{best,plays,last}}
+  cards:[],             // 간격 반복(SRS) 개념 카드 {id,front,back,srs}
   seq:0,
   onboarded:false,      // 첫 실행 안내 여부
   settings:{provider:'gemini', keys:{gemini:''}, models:{gemini:'gemini-flash-latest'}, backendUrl:''}
@@ -853,7 +858,7 @@ function load(){
   try{const r=JSON.parse(localStorage.getItem('thinkos2'));
     if(!r)return structuredClone(DEFAULT);
     const s={...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},
-      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[],assessments:r.assessments||[],cog:r.cog||{}};
+      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[],assessments:r.assessments||[],cog:r.cog||{},cards:r.cards||[]};
     // 구버전 원칙({p,src,day})을 진화형 모델로 정규화
     s.wisdom=s.wisdom.map(w=>w.text!==undefined?w:{id:(w.id||++s.seq),text:w.p||w.text||'',src:w.src||'',day:w.day||'',cases:w.cases||[],revisions:w.revisions||[]});
     // 설정 정규화 — Gemini 전용
@@ -931,6 +936,7 @@ function renderHome(){
         <div class="mi"><div class="mv">${depth}</div><div class="mk">사고 깊이</div></div>
         <div class="mi"><div class="mv">Lv${c.n}</div><div class="mk">${c.name}</div></div>
       </div>
+      ${dueCount()>0?`<button class="review-nudge" onclick="cogRecall()">🔁 오늘 복습할 원칙·개념 <b>${dueCount()}장</b><span>기억에서 꺼낼 시간 — 지금 해야 오래 남는다 →</span></button>`:''}
       ${w?`<blockquote class="quote"><p>${w.text}</p><cite>내가 남긴 원칙 · ${w.day||''}</cite></blockquote>`:''}
       <div class="biglink"><a href="#" onclick="go('you');return false">나의 사고 유전자 보기 →</a></div>
     </section>`;
@@ -1058,38 +1064,91 @@ function cogResult(id,scoreLabel,note,scoreNum){
       <button class="btn" onclick="cogStart('${id}')">다시</button></div>`);
 }
 
-/* --- 1. 인출 훈련 (retrieval practice) — 근거 탄탄 --- */
+/* --- 1. 인출 훈련 (retrieval practice) — 간격 반복(SRS·SM-2 간소화). 근거 탄탄 --- */
+function dayNum(){return Math.floor((new Date()-new Date(2020,0,1))/864e5);}
+function srsNew(){return {ease:2.5,interval:0,due:dayNum(),reps:0,lapses:0};}
+function srsUpdate(s,rating){   // rating: 0 다시 · 1 어려움 · 2 좋음 · 3 쉬움
+  s=s?{...s}:srsNew();
+  if(rating===0){s.interval=0;s.lapses=(s.lapses||0)+1;s.ease=Math.max(1.3,s.ease-0.2);}
+  else{
+    if(s.interval===0)s.interval=(rating===3?2:1);
+    else s.interval=Math.round(s.interval*(rating===1?1.2:s.ease*(rating===3?1.3:1)));
+    s.ease=Math.min(2.8,Math.max(1.3,s.ease+(rating===1?-0.15:rating===3?0.15:0)));
+  }
+  s.interval=Math.max(0,Math.min(365,s.interval));
+  s.due=dayNum()+s.interval; s.reps=(s.reps||0)+1;
+  return s;
+}
+function reviewItems(){   // 오늘 due인 원칙 + 개념 카드
+  const today=dayNum(), out=[];
+  (S.wisdom||[]).forEach(w=>{const s=w.srs||srsNew(); if(s.due<=today) out.push({kind:'w',id:w.id,front:w.src||w.day||'과거 훈련',back:w.text,s});});
+  (S.cards||[]).forEach(c=>{const s=c.srs||srsNew(); if(s.due<=today) out.push({kind:'c',id:c.id,front:c.front,back:c.back,s});});
+  return out;
+}
+function dueCount(){return reviewItems().length;}
+function reviewApply(item,rating){
+  const ns=srsUpdate(item.s,rating);
+  if(item.kind==='w'){const w=(S.wisdom||[]).find(x=>x.id===item.id);if(w)w.srs=ns;}
+  else{const c=(S.cards||[]).find(x=>x.id===item.id);if(c)c.srs=ns;}
+  save();
+}
+function addCard(front,back){S.seq=(S.seq||0)+1;S.cards.unshift({id:S.seq,front:front.trim(),back:back.trim(),srs:srsNew()});save();}
+function cogAddCardForm(){
+  return `<div style="margin-top:16px;text-align:left;border-top:1px solid var(--line);padding-top:14px">
+    <div class="stepname" style="margin:0 0 8px">외우고 싶은 개념 카드 추가</div>
+    <input id="cardF" class="gs-input" placeholder="앞면 · 질문/용어 (예: 복리란?)" style="margin-bottom:8px"/>
+    <textarea id="cardB" class="gs-input" style="min-height:50px" placeholder="뒷면 · 답/설명"></textarea>
+    <div class="as-actions" style="margin-top:8px"><button class="btn sm" onclick="cogAddCard()">카드 추가 +</button></div></div>`;
+}
+function cogAddCard(){
+  const f=(document.getElementById('cardF')?.value||'').trim(), bk=(document.getElementById('cardB')?.value||'').trim();
+  if(f.length<2||bk.length<2){document.getElementById('cardF')?.focus();return;}
+  addCard(f,bk); cogRecall();
+}
 function cogRecall(){
-  const W=(S.wisdom||[]).slice();
-  if(!W.length){
-    cogBox(`<p class="page-kicker">인출 훈련</p><p class="hint" style="color:var(--muted);line-height:1.7">아직 축적된 <b>원칙</b>이 없습니다. 깊은 훈련이나 회고에서 원칙을 남기면, 여기서 그 원칙을 기억에서 꺼내 되새기는 인출 훈련을 할 수 있습니다.</p>
-      <div class="as-actions"><button class="btn ghost sm" onclick="cogClose()">닫기</button><button class="btn" onclick="cogClose();go('routine');renderRoutine()">훈련하러 가기</button></div>`);
+  const q=reviewItems();
+  if(!q.length){
+    const total=(S.wisdom||[]).length+(S.cards||[]).length;
+    cogBox(`<p class="page-kicker">인출 훈련 · 간격 반복</p>
+      <p class="hint" style="color:var(--muted);line-height:1.7;text-align:left">${total
+        ? `지금 <b>복습할 카드가 없습니다</b> — 예약된 카드는 기억이 흐려질 즈음(며칠~몇 주 뒤) 자동으로 다시 나타납니다. 그때 꺼내야 오래 남습니다.`
+        : `아직 복습할 게 없습니다. 훈련에서 <b>원칙</b>을 남기거나, 아래에서 외우고 싶은 <b>개념</b>을 추가하세요. 여기 담긴 건 간격을 두고 다시 물어봐 장기기억으로 굳힙니다.`}</p>
+      ${cogAddCardForm()}
+      <div class="as-actions" style="margin-top:14px"><button class="btn ghost sm" onclick="cogClose()">닫기</button></div>`);
     return;
   }
-  const w=W[Math.floor(Math.random()*W.length)];
-  cogBox(`<p class="page-kicker">인출 훈련 · 원칙 회상</p>
-    <p class="hint" style="color:var(--muted);margin-bottom:12px">이 상황에서 당신이 뽑았던 <b>원칙</b>이 무엇이었는지 기억에서 꺼내보세요. (보지 말고)</p>
-    <div class="cog-cue">"${w.src||w.day||'과거 훈련'}"</div>
-    <textarea id="cogRec" class="gs-input" style="min-height:60px;margin-top:10px" placeholder="그때 내가 남긴 원칙은..."></textarea>
-    <div class="as-actions" style="margin-top:12px"><button class="btn ghost sm" onclick="cogClose()">닫기</button><button class="btn" onclick="cogRecallReveal(${w.id})">확인 →</button></div>`);
-  document.getElementById('cogRec')?.focus();
+  COG={queue:q.slice(0,25),i:0,done:0};
+  cogRecallCard();
 }
-function cogRecallReveal(id){
-  const w=(S.wisdom||[]).find(x=>x.id===id);if(!w)return cogClose();
-  const mine=(document.getElementById('cogRec')?.value||'').trim();
-  cogBox(`<p class="page-kicker">인출 훈련 · 정답</p>
-    <div class="cog-cue" style="border-color:var(--acc2)">💎 ${w.text}</div>
-    ${mine?`<p class="hint" style="color:var(--muted);margin-top:10px">내가 꺼낸 것: <span style="color:var(--txt)">${escapeHtml(mine)}</span></p>`:''}
-    <p class="hint" style="color:var(--muted2);margin-top:10px">얼마나 떠올랐나요? (정직하게 — 인출 강도가 기억을 굳힙니다)</p>
+function cogRecallCard(){
+  const it=COG.queue[COG.i];
+  cogBox(`<p class="page-kicker">인출 · ${COG.i+1}/${COG.queue.length}</p>
+    <p class="hint" style="color:var(--muted);margin-bottom:10px">이 단서에서 답을 <b>기억에서 꺼내</b>보세요. (보지 말고)</p>
+    <div class="cog-cue">${escapeHtml(it.front)}</div>
+    <div class="as-actions" style="margin-top:14px"><button class="btn ghost sm" onclick="cogClose()">그만</button><button class="btn" onclick="cogRecallShow()">답 확인 →</button></div>`);
+}
+function cogRecallShow(){
+  const it=COG.queue[COG.i];
+  cogBox(`<p class="page-kicker">인출 · 정답 확인</p>
+    <div class="cog-cue" style="border-left-color:var(--muted2)">${escapeHtml(it.front)}</div>
+    <div class="cog-cue" style="border-left-color:var(--acc2);margin-top:8px">💡 ${escapeHtml(it.back)}</div>
+    <p class="hint" style="color:var(--muted2);margin-top:12px">얼마나 떠올랐나요? (정직하게 — 이게 다음 복습 간격을 정합니다)</p>
     <div class="cog-rate">
-      <button class="btn ghost sm" onclick="cogRecallDone(2)">또렷했다</button>
-      <button class="btn ghost sm" onclick="cogRecallDone(1)">가물가물</button>
-      <button class="btn ghost sm" onclick="cogRecallDone(0)">거의 못 함</button></div>`);
+      <button class="btn ghost sm" onclick="cogRecallRate(0)">다시</button>
+      <button class="btn ghost sm" onclick="cogRecallRate(1)">어려움</button>
+      <button class="btn ghost sm" onclick="cogRecallRate(2)">좋음</button>
+      <button class="btn ghost sm" onclick="cogRecallRate(3)">쉬움</button></div>`);
 }
-function cogRecallDone(q){
-  const c=S.cog.recall||{best:0,plays:0,strong:0};c.plays++;if(q===2)c.strong=(c.strong||0)+1;c.last=q;c.best=Math.max(c.best||0,c.strong||0);
-  S.cog.recall=c;save();
-  cogResult('recall', c.strong+'개', '또렷하게 인출한 원칙 수. 며칠 간격으로 다시 꺼낼수록 오래 남습니다.', c.strong);
+function cogRecallRate(r){
+  const it=COG.queue[COG.i];
+  reviewApply(it,r);
+  if(r===0)COG.queue.push({...it,s:it.s});   // '다시'는 세션 끝에 한 번 더
+  COG.done++; COG.i++;
+  if(COG.i>=COG.queue.length){
+    const c=S.cog.recall||{best:0,plays:0}; c.plays++; c.last=COG.done; c.best=Math.max(c.best||0,COG.done); S.cog.recall=c; save();
+    cogResult('recall',COG.done+'장','오늘 복습 완료. 각 카드는 기억 강도에 따라 며칠~몇 주 뒤 다시 나타납니다 — 그 반복이 장기기억을 만듭니다.',COG.done);
+    renderHome();
+  } else cogRecallCard();
 }
 
 /* --- 2. 작업기억 스팬 (backward digit span) --- */
@@ -1170,12 +1229,16 @@ function renderToolkit(){
   const mm=MODELS.map(gr=>`
     <div class="mm-cat">${gr.group.replace(/^\S+\s/,'')}</div>
     <div class="mmx-grid">${gr.items.map(m=>`<div class="mmx"><h5>${m.n}</h5><p>${m.d}</p><div class="trig">"${m.t}"</div></div>`).join('')}</div>`).join('');
+  const due=dueCount();
   const cog=COG_DRILLS.map(d=>{const c=S.cog[d.id]||{};
+    const foot=d.id==='recall'
+      ? (due>0?`<b style="color:var(--acc)">오늘 복습 ${due}장</b>`:(c.plays?`복습 ${c.plays}회 · 예약됨`:'원칙·개념을 담아보세요'))
+      : (c.plays?`최고 <b>${c.best}</b> · ${c.plays}회`:'아직 안 함');
     return `<button class="cog-card" onclick="cogStart('${d.id}')">
       <div class="cog-top"><span class="cog-ic">${d.icon}</span><span class="cog-tier ${d.tier}">${d.tier==='strong'?'근거 탄탄':'전이 근거 제한'}</span></div>
       <h4>${d.name}</h4><div class="cog-tr">${d.trains}</div>
       <p>${d.desc}</p>
-      <div class="cog-best">${c.plays?`최고 <b>${c.best}</b> · ${c.plays}회`:'아직 안 함'}</div></button>`;}).join('');
+      <div class="cog-best">${foot}</div></button>`;}).join('');
   document.getElementById('toolBody').innerHTML=`
     <p class="page-kicker">도구함</p>
     <h2 class="page-title">막히면 렌즈를 바꿔라</h2>
