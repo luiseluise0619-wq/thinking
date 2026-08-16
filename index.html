@@ -291,10 +291,20 @@
   .cog-cell{aspect-ratio:1;background:var(--panel2);border:1px solid var(--line);border-radius:var(--rs);font-size:17px;color:var(--muted);display:grid;place-items:center;font-family:var(--mono)}
   .cog-cell.tgt{color:var(--acc)}
   .cog-cell:active{background:var(--line)}
-  .review-nudge{display:block;width:100%;text-align:left;margin-top:28px;background:var(--panel);border:1px solid var(--acc);border-left:3px solid var(--acc);border-radius:var(--r);padding:14px 16px;transition:.15s}
-  .review-nudge:hover{background:var(--panel2)}
-  .review-nudge b{color:var(--acc)}
-  .review-nudge span{display:block;font-size:12.5px;color:var(--muted2);margin-top:3px}
+  .routine-strip{margin-top:26px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+  .routine-strip.all-done{border-color:var(--good)}
+  .rs-head{font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:11px 15px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .rs-head span{color:var(--acc);font-weight:700}
+  .routine-strip.all-done .rs-head span{color:var(--good)}
+  .rs-item{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:13px 15px;border-bottom:1px solid var(--line);transition:.15s;background:none}
+  .rs-item:last-child{border-bottom:0}
+  .rs-item:hover{background:var(--panel2)}
+  .rs-check{width:24px;height:24px;flex:none;border-radius:99px;border:1.5px solid var(--line2);display:grid;place-items:center;font-size:13px;color:var(--good)}
+  .rs-item.done .rs-check{border-color:var(--good);background:color-mix(in srgb,var(--good) 16%,transparent)}
+  .rs-label{flex:1;font-size:15px;font-weight:600}
+  .rs-label small{display:block;font-weight:400;font-size:12.5px;color:var(--muted2);margin-top:2px}
+  .rs-item.done .rs-label{color:var(--muted)}
+  .rs-go{color:var(--muted2);font-size:16px}
 
   .levels{display:grid;gap:11px}
   .lvl-row{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
@@ -913,6 +923,25 @@ function drawRadar(){
 }
 
 // ---------- 오늘 (Today) — 하나의 질문에 집중하는 히어로 ----------
+// 오늘의 루틴 — 매일 하는 3가지를 하나로 (질문 + 인출 복습 + 실행 회고)
+function dailyRoutineHtml(){
+  const today=todayStr();
+  const trained=(S.lastDay===today)&&(S.sessions>0);
+  const totalCards=(S.wisdom||[]).length+(S.cards||[]).length;
+  const due=dueCount();
+  const pend=(S.actions||[]).filter(a=>a.status==='pending').length;
+  const tasks=[{done:trained,label:'오늘의 질문',sub:trained?'완료 ✓':'빠른 판단 5분 · 깊은 훈련 10분',act:"go('routine')"}];
+  if(totalCards>0)tasks.push({done:due===0,label:'인출 복습',sub:due>0?`${due}장 대기 — 기억에서 꺼낼 시간`:'오늘 몫 완료 ✓',act:'cogRecall()'});
+  if(pend>0)tasks.push({done:false,label:'실행 결과 기록',sub:`${pend}건 미확인 — 약속의 결과를 남겨라`,act:`openFeedback(${(S.actions.find(a=>a.status==='pending')||{}).id})`});
+  const doneN=tasks.filter(t=>t.done).length, all=doneN===tasks.length;
+  return `<div class="routine-strip${all?' all-done':''}">
+    <div class="rs-head">오늘의 루틴 <span>${doneN}/${tasks.length}${all?' · 완료 🔥':''}</span></div>
+    ${tasks.map(t=>`<button class="rs-item ${t.done?'done':''}" onclick="${t.act}">
+      <span class="rs-check">${t.done?'✓':''}</span>
+      <span class="rs-label">${t.label}<small>${t.sub}</small></span>
+      ${t.done?'':'<span class="rs-go">→</span>'}</button>`).join('')}
+  </div>`;
+}
 function renderHome(){
   renderFeedback();
   const c=currentLevel(), g=genome();
@@ -930,13 +959,13 @@ function renderHome(){
         <button class="btn ghost" onclick="startQuick()">빠른 판단</button>
         <span class="mins">깊은 훈련 약 10분 · 빠른 판단 5분</span>
       </div>
+      ${dailyRoutineHtml()}
       <div class="meta">
         <div class="mi"><div class="mv">${S.streak}<small> 일</small></div><div class="mk">연속</div></div>
         <div class="mi"><div class="mv">${S.sessions}<small> 회</small></div><div class="mk">누적 훈련</div></div>
         <div class="mi"><div class="mv">${depth}</div><div class="mk">사고 깊이</div></div>
         <div class="mi"><div class="mv">Lv${c.n}</div><div class="mk">${c.name}</div></div>
       </div>
-      ${dueCount()>0?`<button class="review-nudge" onclick="cogRecall()">🔁 오늘 복습할 원칙·개념 <b>${dueCount()}장</b><span>기억에서 꺼낼 시간 — 지금 해야 오래 남는다 →</span></button>`:''}
       ${w?`<blockquote class="quote"><p>${w.text}</p><cite>내가 남긴 원칙 · ${w.day||''}</cite></blockquote>`:''}
       <div class="biglink"><a href="#" onclick="go('you');return false">나의 사고 유전자 보기 →</a></div>
     </section>`;
