@@ -279,20 +279,13 @@
   .cog-best{font-family:var(--mono);font-size:11px;color:var(--muted2)}
   .cog-box{max-width:440px;text-align:center}
   .cog-box .as-actions,.cog-box .cog-rate{justify-content:center}
-  .cog-digits{font-family:var(--mono);font-size:44px;font-weight:700;letter-spacing:12px;color:var(--acc2);padding:24px 0;text-align:center}
   .cog-cue{background:var(--panel2);border:1px solid var(--line2);border-left:3px solid var(--muted2);border-radius:var(--r);padding:14px;font-size:15px;line-height:1.5;text-align:left}
   .cog-rate{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
   .cog-timer{font-family:var(--mono);font-size:14px;color:var(--muted);margin-bottom:8px}
-  .cog-prompt{font-family:var(--serif);font-size:40px;font-weight:700;padding:22px 0}
-  .cog-rule{font-family:var(--mono);font-size:13px;color:var(--txt);background:var(--panel2);border-radius:99px;padding:6px 14px;display:inline-block;margin-bottom:4px}
   .cog-tf{display:flex;gap:10px;justify-content:center}
   .cog-tf .btn{min-width:120px}
   .cog-score{font-family:var(--serif);font-size:44px;font-weight:700;color:var(--acc2);padding:10px 0 2px}
   .cog-mini{font-family:var(--mono);font-size:12px;color:var(--muted2)}
-  .cog-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:6px}
-  .cog-cell{aspect-ratio:1;background:var(--panel2);border:1px solid var(--line);border-radius:var(--rs);font-size:17px;color:var(--muted);display:grid;place-items:center;font-family:var(--mono)}
-  .cog-cell.tgt{color:var(--acc)}
-  .cog-cell:active{background:var(--line)}
   .cog-solveq{font-family:var(--serif);font-size:17px;line-height:1.6;text-align:left;background:var(--panel2);border-radius:var(--r);padding:15px;margin-bottom:12px}
   .nb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:230px;margin:6px auto}
   .nb-cell{aspect-ratio:1;background:var(--panel2);border:1px solid var(--line);border-radius:var(--rs);transition:background .1s}
@@ -1060,24 +1053,17 @@ function saveFeedback(){
 
 // ---------- 도구 (Toolkit) — 사고 프레임 + 멘탈 모델 ----------
 /* ============================================================
-   인지 훈련 (Cognitive Gym) — 여러 인지 능력 드릴
-   정직 원칙: 인출은 근거 탄탄, 나머지 게임형은 전이 근거 제한적 → 라벨링
+   인지 훈련 (Cognitive Gym) — 한 번에 두 능력을 올리는 셋으로 통합
+   문제풀이(이해속도+추론) · 인출(장기기억+학습) · N-백(작업기억+주의)
 ============================================================ */
+// 능력마다 게임을 따로 두지 않는다. 한 번에 '두 능력'을 함께 올리는 세 가지에 집중.
 const COG_DRILLS=[
-  {id:'solve',icon:'⏱️',name:'타임어택 문제풀이',trains:'추론 · 문제해결 · 이해속도',tier:'aim',
-   desc:'제한 시간 안에 문제를 이해하고 푼다. 게임이 아니라 목표 능력을 직접 연습 — "복잡한 걸 빨리 이해·해결"에 가장 직접적이다.'},
-  {id:'recall',icon:'🔁',name:'인출 훈련',trains:'장기기억 · 학습',tier:'strong',
-   desc:'쌓아둔 원칙을 기억에서 꺼내 다시 적용한다. 인출·분산 반복은 전이 근거가 확실하다.'},
-  {id:'nback',icon:'🧠',name:'N-백',trains:'작업기억 · 주의',tier:'weak',
-   desc:'N단계 전과 같은 위치를 찾는다. 연구 표준 작업기억 과제 — 근거리 전이는 되나 전반 지능 전이는 논쟁적.'},
-  {id:'span',icon:'🔢',name:'작업기억 스팬',trains:'작업기억',tier:'weak',
-   desc:'숫자열을 기억했다 거꾸로 답한다. 스팬은 늘지만 실생활 전이 근거는 약하다.'},
-  {id:'speed',icon:'⚡',name:'처리속도',trains:'처리속도 · 주의',tier:'weak',
-   desc:'30초간 빠른 참·거짓 판단. 이 과제는 빨라지지만 전이는 제한적이다.'},
-  {id:'flex',icon:'🔀',name:'인지적 유연성',trains:'유연성 · 억제조절',tier:'weak',
-   desc:'규칙이 바뀔 때 빠르게 전환. 전환 비용을 체감하는 용도.'},
-  {id:'attn',icon:'🎯',name:'선택적 주의',trains:'주의 · 처리속도',tier:'weak',
-   desc:'방해자극 속에서 표적을 빠르게 찾는다.'},
+  {id:'solve',icon:'⏱️',name:'타임어택 문제풀이',trains:'이해속도 + 추론·문제해결',tier:'aim',
+   desc:'제한 시간에 문제를 빨리 이해하고(처리속도) 풀어낸다(추론). 게임이 아니라 목표 능력을 직접 연습 — 두 능력을 한 번에.'},
+  {id:'recall',icon:'🔁',name:'인출 훈련',trains:'장기기억 + 학습',tier:'strong',
+   desc:'쌓은 원칙·개념을 기억에서 꺼내(장기기억) 새로 익힌다(학습). 인출·분산 반복은 전이 근거가 확실하다.'},
+  {id:'nback',icon:'🧠',name:'N-백',trains:'작업기억 + 주의',tier:'weak',
+   desc:'정보를 머릿속에 붙들고(작업기억) 집중을 유지한다(주의). 연구 표준 과제 — 근거리 전이는 되나 전반 지능 전이는 논쟁적.'},
 ];
 let COG=null;   // 현재 드릴 런타임
 function cogClose(){COG&&COG.timer&&clearInterval(COG.timer);COG&&COG.to&&clearTimeout(COG.to);COG=null;document.getElementById('cogModal').classList.remove('open');}
@@ -1089,10 +1075,6 @@ function cogStart(id){
   if(id==='solve')return cogSolveStart();
   if(id==='recall')return cogRecall();
   if(id==='nback')return cogNbackStart();
-  if(id==='span')return cogSpanStart();
-  if(id==='speed')return cogSpeedStart();
-  if(id==='flex')return cogFlexStart();
-  if(id==='attn')return cogAttnStart();
 }
 function cogResult(id,scoreLabel,note,scoreNum){
   const c=S.cog[id]||{};
@@ -1191,73 +1173,6 @@ function cogRecallRate(r){
   } else cogRecallCard();
 }
 
-/* --- 2. 작업기억 스팬 (backward digit span) --- */
-function cogSpanStart(){COG={len:3,fails:0};cogSpanShow();}
-function cogSpanShow(){
-  const seq=Array.from({length:COG.len},()=>cogRandInt(0,9));COG.seq=seq;
-  cogBox(`<p class="page-kicker">작업기억 · ${COG.len}자리</p>
-    <p class="hint" style="color:var(--muted);margin-bottom:16px">숫자를 기억하세요. 잠시 뒤 <b>거꾸로</b> 입력합니다.</p>
-    <div class="cog-digits" id="cogDig">${seq.join(' ')}</div>`);
-  COG.to=setTimeout(()=>cogSpanInput(),700+COG.len*650);
-}
-function cogSpanInput(){
-  cogBox(`<p class="page-kicker">작업기억 · 거꾸로 입력</p>
-    <p class="hint" style="color:var(--muted);margin-bottom:12px">방금 숫자를 <b>거꾸로</b> 입력하세요.</p>
-    <input id="cogSpanIn" class="gs-input" style="font-size:22px;letter-spacing:6px;text-align:center" inputmode="numeric" placeholder="· · ·" />
-    <div class="as-actions" style="margin-top:12px"><button class="btn" onclick="cogSpanCheck()">확인 →</button></div>`);
-  const el=document.getElementById('cogSpanIn');el.focus();el.onkeydown=e=>{if(e.key==='Enter')cogSpanCheck();};
-}
-function cogSpanCheck(){
-  const raw=(document.getElementById('cogSpanIn')?.value||'').replace(/\D/g,'');
-  const ok=raw===COG.seq.slice().reverse().join('');
-  if(ok){COG.len++;COG.fails=0;cogSpanShow();}
-  else{COG.fails++;if(COG.fails>=2){const best=COG.len-1;cogSave('span',best);cogResult('span',best+'자리',best>=7?'뛰어난 작업기억 스팬입니다.':best>=5?'평균 이상입니다.':'꾸준히 하면 스팬이 늘어납니다.',best);}
-    else cogSpanShow();}
-}
-
-/* --- 3. 처리속도 (rapid true/false, 30s) --- */
-function cogSpeedStart(){COG={t:30,correct:0,total:0};cogSpeedTick();cogSpeedQ();
-  COG.timer=setInterval(()=>{COG.t--;const el=document.getElementById('cogT');if(el)el.textContent=COG.t;
-    if(COG.t<=0){clearInterval(COG.timer);cogSave('speed',COG.correct);cogResult('speed',COG.correct+'개',`30초 · 정답 ${COG.correct}/${COG.total}. 이 과제엔 빨라지지만 실생활 전이 근거는 약합니다.`,COG.correct);}},1000);}
-function cogSpeedTick(){}
-function cogSpeedQ(){
-  const a=cogRandInt(2,9),b=cogRandInt(2,9),real=a*b;
-  const shown=Math.random()<0.5?real:real+(Math.random()<0.5?cogRandInt(1,9):-cogRandInt(1,Math.min(9,real-1)));
-  COG.ans=(shown===real);
-  cogBox(`<div class="cog-timer">⏱ <span id="cogT">${COG.t}</span>s · <span style="color:var(--good)">${COG.correct}</span></div>
-    <div class="cog-prompt">${a} × ${b} = ${shown}</div>
-    <div class="cog-tf"><button class="btn" onclick="cogSpeedA(true)">맞음</button><button class="btn ghost" onclick="cogSpeedA(false)">틀림</button></div>`);
-}
-function cogSpeedA(v){if(!COG||COG.t<=0)return;COG.total++;if(v===COG.ans)COG.correct++;cogSpeedQ();}
-
-/* --- 4. 인지적 유연성 (rule switching, 30s) --- */
-function cogFlexStart(){COG={t:30,correct:0,total:0};cogFlexQ();
-  COG.timer=setInterval(()=>{COG.t--;const el=document.getElementById('cogT');if(el)el.textContent=COG.t;
-    if(COG.t<=0){clearInterval(COG.timer);cogSave('flex',COG.correct);cogResult('flex',COG.correct+'개',`30초 · 정답 ${COG.correct}. 규칙 전환 비용을 줄이는 연습입니다.`,COG.correct);}},1000);}
-function cogFlexQ(){
-  const n=cogRandInt(1,9);const rule=Math.random()<0.5?'odd':'size';COG.rule=rule;COG.n=n;
-  const label=rule==='odd'?'홀수?  짝수?':'5보다 큼?  작음?';
-  COG.leftTrue=rule==='odd'?(n%2===1):(n>5);
-  cogBox(`<div class="cog-timer">⏱ <span id="cogT">${COG.t}</span>s · <span style="color:var(--good)">${COG.correct}</span></div>
-    <div class="cog-rule">${rule==='odd'?'🔵 홀짝 판단':'🟠 크기 판단(5 기준)'}</div>
-    <div class="cog-prompt">${n}</div>
-    <div class="cog-tf"><button class="btn" onclick="cogFlexA(true)">${rule==='odd'?'홀수':'5보다 큼'}</button><button class="btn ghost" onclick="cogFlexA(false)">${rule==='odd'?'짝수':'5보다 작음'}</button></div>`);
-}
-function cogFlexA(pickLeft){if(!COG||COG.t<=0)return;COG.total++;if(pickLeft===COG.leftTrue)COG.correct++;cogFlexQ();}
-
-/* --- 5. 선택적 주의 (find the target, 30s) --- */
-function cogAttnStart(){COG={t:30,found:0};cogAttnGrid();
-  COG.timer=setInterval(()=>{COG.t--;const el=document.getElementById('cogT');if(el)el.textContent=COG.t;
-    if(COG.t<=0){clearInterval(COG.timer);cogSave('attn',COG.found);cogResult('attn',COG.found+'개',`30초 · 표적 ${COG.found}개. 방해자극 억제·주의 연습.`,COG.found);}},1000);}
-function cogAttnGrid(){
-  const distractors=['O','Q','C','G'],target='●';
-  const N=cogRandInt(24,42),pos=Math.floor(Math.random()*N);
-  let cells='';for(let i=0;i<N;i++){cells+=`<button class="cog-cell${i===pos?' tgt':''}" onclick="cogAttnPick(${i===pos})">${i===pos?target:distractors[Math.floor(Math.random()*distractors.length)]}</button>`;}
-  cogBox(`<div class="cog-timer">⏱ <span id="cogT">${COG.t}</span>s · <span style="color:var(--good)">${COG.found}</span></div>
-    <p class="hint" style="text-align:center;color:var(--muted);margin:0 0 8px"><b>●</b> 를 찾아 누르세요</p>
-    <div class="cog-grid">${cells}</div>`);
-}
-function cogAttnPick(isTarget){if(!COG||COG.t<=0)return;if(isTarget){COG.found++;cogAttnGrid();}}
 
 /* --- 6. 타임어택 문제풀이 — 목표 능력(이해·추론·해결) 직접 연습 --- */
 const SOLVE_PROBS=[
@@ -1371,8 +1286,8 @@ function renderToolkit(){
     <h2 class="page-title">막히면 렌즈를 바꿔라</h2>
     <p class="page-lede">같은 문제도 어떤 프레임으로 보느냐에 따라 답이 달라진다. 세션에서는 당신의 사고 상태에 맞춰 자동으로 추천된다.</p>
     <div class="section">
-      <div class="section-head"><h3>인지 훈련</h3><span class="note">여러 인지 능력 드릴</span></div>
-      <p class="page-lede" style="margin:0 0 14px;font-size:13.5px">추론·메타인지는 오늘의 훈련이 담당한다. 여기서는 나머지 인지 능력을 짧게 단련한다. <b>정직하게</b> — 인출 훈련만 실생활 전이 근거가 확실하고, 게임형 드릴은 "그 과제를 잘하게 되는" 쪽에 가깝다.</p>
+      <div class="section-head"><h3>인지 훈련</h3><span class="note">한 번에 두 능력을 올리는 셋</span></div>
+      <p class="page-lede" style="margin:0 0 14px;font-size:13.5px">능력마다 게임을 따로 두면 흐려진다. <b>한 번에 두 능력을 함께</b> 올리는 세 가지에 집중했다. <b>정직하게</b> — 문제풀이는 목표 능력을 직접 연습(가장 확실), 인출은 전이 근거 탄탄, N-백은 근거리 전이 위주다.</p>
       <div class="cog-grid-cards">${cog}</div>
     </div>
     <div class="section">
