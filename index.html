@@ -310,6 +310,23 @@
   .rs-label small{display:block;font-weight:400;font-size:12.5px;color:var(--muted2);margin-top:2px}
   .rs-item.done .rs-label{color:var(--muted)}
   .rs-go{color:var(--muted2);font-size:16px}
+  .brain-card{margin-top:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden}
+  .brain-habs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+  @media(max-width:560px){.brain-habs{grid-template-columns:1fr}}
+  .brain-hab{display:flex;align-items:center;gap:11px;text-align:left;padding:12px 14px;background:var(--panel);transition:.15s}
+  .brain-hab:hover{background:var(--panel2)}
+  .brain-hab.on{background:color-mix(in srgb,var(--good) 10%,var(--panel))}
+  .bh-check{width:22px;height:22px;flex:none;border-radius:99px;border:1.5px solid var(--line2);display:grid;place-items:center;font-size:12px;color:var(--good)}
+  .brain-hab.on .bh-check{border-color:var(--good);background:color-mix(in srgb,var(--good) 18%,transparent)}
+  .bh-ic{font-size:19px;flex:none}
+  .bh-name{font-size:14px;font-weight:600;line-height:1.25}
+  .bh-name small{display:block;font-weight:400;font-size:11.5px;color:var(--muted2);margin-top:1px}
+  .brain-hab.on .bh-name{color:var(--txt)}
+  .brain-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+  .brain-meter{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:1;min-width:180px}
+  .bm-bar{flex:1;height:6px;border-radius:2px;background:var(--panel2);overflow:hidden;max-width:180px}
+  .bm-bar i{display:block;height:100%;border-radius:2px}
+  .brain-streak{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--acc)}
 
   .levels{display:grid;gap:11px}
   .lvl-row{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
@@ -864,6 +881,7 @@ const DEFAULT = {
   assessments:[],       // 사고력 사전/사후 진단 (효과 검증)
   cog:{},               // 인지 드릴 기록 {drillId:{best,plays,last}}
   cards:[],             // 간격 반복(SRS) 개념 카드 {id,front,back,srs}
+  brain:{},             // 두뇌 관리 습관 로그 {day:[habitId...]} (잠·운동·집중·명상)
   seq:0,
   onboarded:false,      // 첫 실행 안내 여부
   settings:{provider:'gemini', keys:{gemini:''}, models:{gemini:'gemini-flash-latest'}, backendUrl:''}
@@ -873,7 +891,7 @@ function load(){
   try{const r=JSON.parse(localStorage.getItem('thinkos2'));
     if(!r)return structuredClone(DEFAULT);
     const s={...DEFAULT,...r,stats:{...DEFAULT.stats,...(r.stats||{})},settings:{...DEFAULT.settings,...(r.settings||{})},
-      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[],assessments:r.assessments||[],cog:r.cog||{},cards:r.cards||[]};
+      wisdom:r.wisdom||[],fwCounts:r.fwCounts||{},history:r.history||[],actions:r.actions||[],assessments:r.assessments||[],cog:r.cog||{},cards:r.cards||[],brain:r.brain||{}};
     // 구버전 원칙({p,src,day})을 진화형 모델로 정규화
     s.wisdom=s.wisdom.map(w=>w.text!==undefined?w:{id:(w.id||++s.seq),text:w.p||w.text||'',src:w.src||'',day:w.day||'',cases:w.cases||[],revisions:w.revisions||[]});
     // 설정 정규화 — Gemini 전용
@@ -929,6 +947,48 @@ function drawRadar(){
 
 // ---------- 오늘 (Today) — 하나의 질문에 집중하는 히어로 ----------
 // 오늘의 루틴 — 매일 하는 3가지를 하나로 (질문 + 인출 복습 + 실행 회고)
+// 두뇌 관리 — 인지과학 근거가 가장 강한 생활 습관을 게임화(체크·스트릭·컨디션)
+const BRAIN_HABITS=[
+  {id:'sleep',icon:'😴',name:'잠 7시간+',note:'기억은 자는 동안 굳는다 — 근거 최강'},
+  {id:'move', icon:'🏃',name:'유산소 20분+',note:'해마·집중력에 실제 효과(BDNF)'},
+  {id:'focus',icon:'🎯',name:'딴짓 없이 집중 30분+',note:'몰입 = 주의력 훈련'},
+  {id:'calm', icon:'🧘',name:'명상·멍때리기 10분',note:'주의·스트레스 조절'},
+];
+function brainToday(){return S.brain[todayStr()]||[];}
+function brainToggle(id){
+  const d=todayStr(); const arr=S.brain[d]?S.brain[d].slice():[];
+  const i=arr.indexOf(id); if(i>=0)arr.splice(i,1); else arr.push(id);
+  S.brain[d]=arr; save(); renderHome();
+}
+function brainStreak(){   // ≥2개 한 날이 연속 며칠
+  let s=0; const day=new Date();
+  for(let k=0;k<400;k++){
+    const ds=day.toISOString().slice(0,10); const n=(S.brain[ds]||[]).length;
+    if(n>=2)s++; else if(k===0){/* 오늘 아직이면 어제부터 셈 */} else break;
+    day.setDate(day.getDate()-1);
+  }
+  return s;
+}
+function brainCondition(){   // 최근 7일 습관 이행률 0~100
+  let done=0; const day=new Date();
+  for(let k=0;k<7;k++){const ds=day.toISOString().slice(0,10);done+=(S.brain[ds]||[]).length;day.setDate(day.getDate()-1);}
+  return Math.round(done/(7*BRAIN_HABITS.length)*100);
+}
+function brainCardHtml(){
+  const today=brainToday(), cond=brainCondition(), streak=brainStreak();
+  const chips=BRAIN_HABITS.map(h=>{const on=today.includes(h.id);
+    return `<button class="brain-hab ${on?'on':''}" onclick="brainToggle('${h.id}')" title="${h.note}">
+      <span class="bh-check">${on?'✓':''}</span><span class="bh-ic">${h.icon}</span>
+      <span class="bh-name">${h.name}<small>${h.note}</small></span></button>`;}).join('');
+  const col=cond>=70?'var(--good)':cond>=40?'var(--gold)':'var(--acc)';
+  return `<div class="brain-card">
+    <div class="rs-head">🧠 두뇌 관리 <span style="color:var(--muted2);text-transform:none;font-weight:400">게임·퍼즐보다 뇌에 영향 큼 · 근거 강함</span></div>
+    <div class="brain-habs">${chips}</div>
+    <div class="brain-foot">
+      <div class="brain-meter"><span>7일 컨디션</span><span class="bm-bar"><i style="width:${cond}%;background:${col}"></i></span><b>${cond}%</b></div>
+      ${streak>0?`<span class="brain-streak">🔥 ${streak}일 연속</span>`:''}
+    </div></div>`;
+}
 function dailyRoutineHtml(){
   const today=todayStr();
   const trained=(S.lastDay===today)&&(S.sessions>0);
@@ -965,6 +1025,7 @@ function renderHome(){
         <span class="mins">깊은 훈련 약 10분 · 빠른 판단 5분</span>
       </div>
       ${dailyRoutineHtml()}
+      ${brainCardHtml()}
       <div class="meta">
         <div class="mi"><div class="mv">${S.streak}<small> 일</small></div><div class="mk">연속</div></div>
         <div class="mi"><div class="mv">${S.sessions}<small> 회</small></div><div class="mk">누적 훈련</div></div>
