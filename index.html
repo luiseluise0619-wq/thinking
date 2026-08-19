@@ -327,6 +327,14 @@
   .bm-bar{flex:1;height:6px;border-radius:2px;background:var(--panel2);overflow:hidden;max-width:180px}
   .bm-bar i{display:block;height:100%;border-radius:2px}
   .brain-streak{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--acc)}
+  .brain-week{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--line)}
+  .bw-lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.5px;color:var(--muted2);flex:none}
+  .bw-dots{display:flex;gap:6px;flex:1}
+  .bw-dot{width:16px;height:16px;border-radius:4px;background:var(--panel2);border:1px solid var(--line)}
+  .bw-dot.s{background:color-mix(in srgb,var(--good) 25%,var(--panel2))}
+  .bw-dot.p{background:color-mix(in srgb,var(--good) 55%,var(--panel2))}
+  .bw-dot.f{background:var(--good);border-color:var(--good)}
+  .bw-dot.today{outline:2px solid var(--acc);outline-offset:1px}
 
   .levels{display:grid;gap:11px}
   .lvl-row{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
@@ -974,6 +982,13 @@ function brainCondition(){   // 최근 7일 습관 이행률 0~100
   for(let k=0;k<7;k++){const ds=day.toISOString().slice(0,10);done+=(S.brain[ds]||[]).length;day.setDate(day.getDate()-1);}
   return Math.round(done/(7*BRAIN_HABITS.length)*100);
 }
+function brainWeekDots(){   // 최근 7일 일관성 (체인 끊지 마)
+  const dd=new Date(), out=[];
+  for(let k=6;k>=0;k--){const x=new Date(dd);x.setDate(x.getDate()-k);const n=(S.brain[x.toISOString().slice(0,10)]||[]).length;
+    const lv=n>=4?'f':n>=2?'p':n>=1?'s':'e';
+    out.push(`<span class="bw-dot ${lv}${k===0?' today':''}" title="${['월','화','수','목','금','토','일'][x.getDay()===0?6:x.getDay()-1]} · ${n}/4"></span>`);}
+  return out.join('');
+}
 function brainCardHtml(){
   const today=brainToday(), cond=brainCondition(), streak=brainStreak();
   const chips=BRAIN_HABITS.map(h=>{const on=today.includes(h.id);
@@ -984,6 +999,7 @@ function brainCardHtml(){
   return `<div class="brain-card">
     <div class="rs-head">🧠 두뇌 관리 <span style="color:var(--muted2);text-transform:none;font-weight:400">게임·퍼즐보다 뇌에 영향 큼 · 근거 강함</span></div>
     <div class="brain-habs">${chips}</div>
+    <div class="brain-week"><span class="bw-lbl">최근 7일</span><span class="bw-dots">${brainWeekDots()}</span></div>
     <div class="brain-foot">
       <div class="brain-meter"><span>7일 컨디션</span><span class="bm-bar"><i style="width:${cond}%;background:${col}"></i></span><b>${cond}%</b></div>
       ${streak>0?`<span class="brain-streak">🔥 ${streak}일 연속</span>`:''}
